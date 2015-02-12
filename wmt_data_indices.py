@@ -4,83 +4,156 @@ import io, os, re
 from collections import defaultdict
 import sys; reload(sys); sys.setdefaultencoding("utf-8")
 
-class WMT14:
-    refpath = "data/WMT14/references/newstest2014-ref."
-    sysoutpath = "data/WMT14/system-outputs/newstest2014/" 
-    scorefile = "data/WMT14/human-2014-05-16.scores"
-    langpairs = ['hi-en', 'en-cs', 'en-de', 'en-hi', 'en-ru', 'cs-en', 'en-fr', 'de-en', 'ru-en', 'fr-en']
-    systemoutputs = {'fr-en': ['newstest2014.rbmt1.0.fr-en', 'newstest2014.onlineA.0.fr-en', 
-                                'newstest2014.uedin-wmt14.3024.fr-en', 'newstest2014.rbmt4.0.fr-en', 
-                                'newstest2014.onlineC.0.fr-en', 'newstest2014.Stanford-University.3496.fr-en', 
-                                'newstest2014.onlineB.0.fr-en', 'newstest2014.kit.3112.fr-en'], 
-                     'en-de': ['newstest2014.uedin-stanford-unconstrained.3539.en-de', 
-                                'newstest2014.rbmt4.0.en-de', 'newstest2014.TTT-contrastive.3475.en-de', 
-                                'newstest2014.CimS-CORI.3514.en-de', 'newstest2014.Stanford.3469.en-de', 
-                                'newstest2014.PROMT-Hybrid.3078.en-de', 'newstest2014.rbmt1.0.en-de', 
-                                'newstest2014.UU-Docent.3063.en-de', 'newstest2014.onlineB.0.en-de', 
-                                'newstest2014.Stanford.3530.en-de', 'newstest2014.uedin-wmt14.3122.en-de', 
-                                'newstest2014.onlineC.0.en-de', 'newstest2014.PROMT-Rule-based.3079.en-de', 
-                                'newstest2014.eubridge.3497.en-de', 'newstest2014.uedin-syntax.3285.en-de', 
-                                'newstest2014.KIT-primary.3399.en-de', 'newstest2014.onlineA.0.en-de', 
-                                'newstest2014.UU.3503.en-de'], 
-                     'en-cs': ['newstest2014.CU-TectoMT.2950.en-cs', 'newstest2014.cu-funky.3515.en-cs', 
-                                 'newstest2014.cu-depfix.3452.en-cs', 'newstest2014.onlineA.0.en-cs', 
-                                 'newstest2014.cu-bojar.3483.en-cs', 'newstest2014.commercial2.3222.en-cs', 
-                                 'newstest2014.uedin-wmt14.3021.en-cs', 'newstest2014.uedin-unconstrained.3424.en-cs', 
-                                 'newstest2014.onlineB.0.en-cs', 'newstest2014.commercial1.3556.en-cs'], 
-                     'cs-en': ['newstest2014.uedin-wmt14.3170.cs-en', 'newstest2014.cu-moses.3383.cs-en', 
-                                 'newstest2014.onlineA.0.cs-en', 'newstest2014.uedin-syntax.3289.cs-en', 
-                                 'newstest2014.onlineB.0.cs-en'], 
-                     'ru-en': ['newstest2014.kaznu1.3549.ru-en', 'newstest2014.rbmt1.0.ru-en', 
-                                 'newstest2014.onlineG.0.ru-en', 'newstest2014.uedin-wmt14.3364.ru-en', 
-                                 'newstest2014.uedin-syntax.3166.ru-en', 'newstest2014.shad-wmt14.3464.ru-en', 
-                                 'newstest2014.rbmt4.0.ru-en', 'newstest2014.onlineA.0.ru-en', 
-                                 'newstest2014.PROMT-Rule-based.3085.ru-en', 'newstest2014.onlineB.0.ru-en', 
-                                 'newstest2014.PROMT-Hybrid.3084.ru-en', 'newstest2014.AFRL-Post-edited.3431.ru-en', 
-                                 'newstest2014.AFRL.3349.ru-en'], 
-                     'en-fr': ['newstest2014.rbmt1.0.en-fr', 'newstest2014.uedin-wmt14.3023.en-fr', 
-                                 'newstest2014.UU-Docent.3517.en-fr', 'newstest2014.PROMT-Hybrid.3082.en-fr', 
-                                 'newstest2014.onlineA.0.en-fr', 'newstest2014.PROMT-Rule-based.3083.en-fr', 
-                                 'newstest2014.kit.3440.en-fr', 'newstest2014.dcu-prompsit-ua-rules.3415.en-fr', 
-                                 'newstest2014.onlineB.0.en-fr', 'newstest2014.dcu-prompsit-ua.3334.en-fr', 
-                                 'newstest2014.onlineC.0.en-fr', 'newstest2014.rbmt4.0.en-fr', 
-                                 'newstest2014.UA-Prompsit.3284.en-fr'], 
-                     'hi-en': ['newstest2014.uedin-wmt14.3422.hi-en', 'newstest2014.IIIT-Hyderabad.3257.hi-en', 
-                                 'newstest2014.iitb-ranked-ppl.3173.hi-en', 'newstest2014.uedin-syntax.3144.hi-en', 
-                                 'newstest2014.AFRL.3456.hi-en', 'newstest2014.DCU-HiEn.3564.hi-en', 
-                                 'newstest2014.onlineB.0.hi-en', 'newstest2014.CMU.3510.hi-en', 
-                                 'newstest2014.onlineA.0.hi-en'], 
-                     'en-ru': ['newstest2014.PROMT-Hybrid.3080.en-ru', 'newstest2014.uedin-unconstrained.3445.en-ru', 
-                                 'newstest2014.rbmt4.0.en-ru', 'newstest2014.uedin-wmt14.3376.en-ru', 
-                                 'newstest2014.onlineB.0.en-ru', 'newstest2014.onlineG.0.en-ru', 
-                                 'newstest2014.PROMT-Rule-based.3081.en-ru', 'newstest2014.onlineA.0.en-ru', 
-                                 'newstest2014.rbmt1.0.en-ru'], 
-                     'en-hi': ['newstest2014.UdS-MaNaWi.3208.en-hi', 'newstest2014.iitb-ranked-ppl.3171.en-hi', 
-                                 'newstest2014.DCU-EN-HI.3578.en-hi', 'newstest2014.onlineA.0.en-hi', 
-                                 'newstest2014.IPN-UPV-NODEV.3552.en-hi', 'newstest2014.onlineB.0.en-hi', 
-                                 'newstest2014.uedin-wmt14.3358.en-hi', 'newstest2014.UDS-MaNaWi-H1-rmOOV.3254.en-hi', 
-                                 'newstest2014.IPN-UPV-CONTEXT.3573.en-hi', 'newstest2014.uedin-unconstrained.3360.en-hi', 
-                                 'newstest2014.UDS-MaNaWi-H1.3252.en-hi', 'newstest2014.cu-moses.3385.en-hi'], 
-                     'de-en': ['newstest2014.kit.3109.de-en', 'newstest2014.onlineA.0.de-en', 
-                                 'newstest2014.eubridge.3569.de-en', 'newstest2014.onlineB.0.de-en', 
-                                 'newstest2014.uedin-syntax.3035.de-en', 'newstest2014.LIMSI-KIT-Submission.3359.de-en', 
-                                 'newstest2014.rbmt4.0.de-en', 'newstest2014.DCU-ICTCAS-Tsinghua-L.3444.de-en', 
-                                 'newstest2014.uedin-wmt14.3025.de-en', 'newstest2014.CMU.3461.de-en', 
-                                 'newstest2014.onlineC.0.de-en', 'newstest2014.rbmt1.0.de-en', 
-                                 'newstest2014.RWTH-primary.3266.de-en']}
-    
+class WMTdata:
     def system_outputs(self, langpair):
-        return [io.open(self.sysoutpath+langpair+'/'+i,'r').readlines() for i in self.systemoutputs[langpair]]
+        return {system: io.open(self.sysoutpath+langpair+'/'+system,'r').readlines() 
+                for system in self.systemoutputs[langpair]}
 
     def references(self, langpair):
         return io.open(self.refpath+langpair, 'r').readlines()
-    
-    
-WMT = {'14': WMT14()}
 
-for langpair in WMT['14'].langpairs:
-    reference = WMT['14'].references(langpair)
-    for system_output in WMT['14'].system_outputs(langpair):
-        counter = 1
-        for ref, sysout in zip(reference, system_output):
-            print ref.strip(), sysout.strip()
+
+class WMT14(WMTdata):
+    refpath = "data/WMT14/references/newstest2014-ref."
+    sysoutpath = "data/WMT14/system-outputs/newstest2014/" 
+    langpairs = ['hi-en', 'en-cs', 'en-de', 'en-hi', 'en-ru', 'cs-en', 'en-fr', 'de-en', 'ru-en', 'fr-en']
+    systemoutputs =  \
+    {'ru-en': ['newstest2014.kaznu1.3549.ru-en', 'newstest2014.rbmt1.0.ru-en', 'newstest2014.onlineG.0.ru-en', 'newstest2014.uedin-wmt14.3364.ru-en', 'newstest2014.uedin-syntax.3166.ru-en', 'newstest2014.shad-wmt14.3464.ru-en', 'newstest2014.rbmt4.0.ru-en', 'newstest2014.onlineA.0.ru-en', 'newstest2014.PROMT-Rule-based.3085.ru-en', 'newstest2014.onlineB.0.ru-en', 'newstest2014.PROMT-Hybrid.3084.ru-en', 'newstest2014.AFRL-Post-edited.3431.ru-en', 'newstest2014.AFRL.3349.ru-en'], 
+     'en-fr': ['newstest2014.rbmt1.0.en-fr', 'newstest2014.uedin-wmt14.3023.en-fr', 'newstest2014.UU-Docent.3517.en-fr', 'newstest2014.PROMT-Hybrid.3082.en-fr', 'newstest2014.onlineA.0.en-fr', 'newstest2014.PROMT-Rule-based.3083.en-fr', 'newstest2014.kit.3440.en-fr', 'newstest2014.dcu-prompsit-ua-rules.3415.en-fr', 'newstest2014.onlineB.0.en-fr', 'newstest2014.dcu-prompsit-ua.3334.en-fr', 'newstest2014.onlineC.0.en-fr', 'newstest2014.rbmt4.0.en-fr', 'newstest2014.UA-Prompsit.3284.en-fr'], 
+     'de-en': ['newstest2014.kit.3109.de-en', 'newstest2014.onlineA.0.de-en', 'newstest2014.eubridge.3569.de-en', 'newstest2014.onlineB.0.de-en', 'newstest2014.uedin-syntax.3035.de-en', 'newstest2014.LIMSI-KIT-Submission.3359.de-en', 'newstest2014.rbmt4.0.de-en', 'newstest2014.DCU-ICTCAS-Tsinghua-L.3444.de-en', 'newstest2014.uedin-wmt14.3025.de-en', 'newstest2014.CMU.3461.de-en', 'newstest2014.onlineC.0.de-en', 'newstest2014.rbmt1.0.de-en', 'newstest2014.RWTH-primary.3266.de-en'], 
+     'hi-en': ['newstest2014.uedin-wmt14.3422.hi-en', 'newstest2014.IIIT-Hyderabad.3257.hi-en', 'newstest2014.iitb-ranked-ppl.3173.hi-en', 'newstest2014.uedin-syntax.3144.hi-en', 'newstest2014.AFRL.3456.hi-en', 'newstest2014.DCU-HiEn.3564.hi-en', 'newstest2014.onlineB.0.hi-en', 'newstest2014.CMU.3510.hi-en', 'newstest2014.onlineA.0.hi-en'], 
+     'en-ru': ['newstest2014.PROMT-Hybrid.3080.en-ru', 'newstest2014.uedin-unconstrained.3445.en-ru', 'newstest2014.rbmt4.0.en-ru', 'newstest2014.uedin-wmt14.3376.en-ru', 'newstest2014.onlineB.0.en-ru', 'newstest2014.onlineG.0.en-ru', 'newstest2014.PROMT-Rule-based.3081.en-ru', 'newstest2014.onlineA.0.en-ru', 'newstest2014.rbmt1.0.en-ru'], 
+     'en-de': ['newstest2014.uedin-stanford-unconstrained.3539.en-de', 'newstest2014.rbmt4.0.en-de', 'newstest2014.TTT-contrastive.3475.en-de', 'newstest2014.CimS-CORI.3514.en-de', 'newstest2014.Stanford.3469.en-de', 'newstest2014.PROMT-Hybrid.3078.en-de', 'newstest2014.rbmt1.0.en-de', 'newstest2014.UU-Docent.3063.en-de', 'newstest2014.onlineB.0.en-de', 'newstest2014.Stanford.3530.en-de', 'newstest2014.uedin-wmt14.3122.en-de', 'newstest2014.onlineC.0.en-de', 'newstest2014.PROMT-Rule-based.3079.en-de', 'newstest2014.eubridge.3497.en-de', 'newstest2014.uedin-syntax.3285.en-de', 'newstest2014.KIT-primary.3399.en-de', 'newstest2014.onlineA.0.en-de', 'newstest2014.UU.3503.en-de'], 
+     'cs-en': ['newstest2014.uedin-wmt14.3170.cs-en', 'newstest2014.cu-moses.3383.cs-en', 'newstest2014.onlineA.0.cs-en', 'newstest2014.uedin-syntax.3289.cs-en', 'newstest2014.onlineB.0.cs-en'], 
+     'fr-en': ['newstest2014.rbmt1.0.fr-en', 'newstest2014.onlineA.0.fr-en', 'newstest2014.uedin-wmt14.3024.fr-en', 'newstest2014.rbmt4.0.fr-en', 'newstest2014.onlineC.0.fr-en', 'newstest2014.Stanford-University.3496.fr-en', 'newstest2014.onlineB.0.fr-en', 'newstest2014.kit.3112.fr-en'], 
+     'en-hi': ['newstest2014.UdS-MaNaWi.3208.en-hi', 'newstest2014.iitb-ranked-ppl.3171.en-hi', 'newstest2014.DCU-EN-HI.3578.en-hi', 'newstest2014.onlineA.0.en-hi', 'newstest2014.IPN-UPV-NODEV.3552.en-hi', 'newstest2014.onlineB.0.en-hi', 'newstest2014.uedin-wmt14.3358.en-hi', 'newstest2014.UDS-MaNaWi-H1-rmOOV.3254.en-hi', 'newstest2014.IPN-UPV-CONTEXT.3573.en-hi', 'newstest2014.uedin-unconstrained.3360.en-hi', 'newstest2014.UDS-MaNaWi-H1.3252.en-hi', 'newstest2014.cu-moses.3385.en-hi'], 
+     'en-cs': ['newstest2014.CU-TectoMT.2950.en-cs', 'newstest2014.cu-funky.3515.en-cs', 'newstest2014.cu-depfix.3452.en-cs', 'newstest2014.onlineA.0.en-cs', 'newstest2014.cu-bojar.3483.en-cs', 'newstest2014.commercial2.3222.en-cs', 'newstest2014.uedin-wmt14.3021.en-cs', 'newstest2014.uedin-unconstrained.3424.en-cs', 'newstest2014.onlineB.0.en-cs', 'newstest2014.commercial1.3556.en-cs']}
+
+class WMT13(WMTdata):
+    refpath = 'data/WMT13/references/newstest2013-ref.'
+    sysoutpath = "data/WMT13/system-outputs/newstest2013/"
+    langpairs = ['en-cs', 'en-de', 'en-ru', 'es-en', 'en-es', 'cs-en', 'en-fr', 
+                 'de-en', 'ru-en', 'fr-en']
+    systemoutputs = \
+    {'es-en': ['newstest2013.es-en.cu-zeman.2734', 'newstest2013.es-en.LIMSI-Ncode-SOUL-primary.2598', 'newstest2013.es-en.online-A', 'newstest2013.es-en.MES:.2801', 'newstest2013.es-en.uedin-heafield-unconstrained.2612', 'newstest2013.es-en.rbmt-4', 'newstest2013.es-en.uedin-wmt13.2877', 'newstest2013.es-en.dcu-prompsit-pbsmt.2692', 'newstest2013.es-en.FDA.2901', 'newstest2013.es-en.rbmt-1', 'newstest2013.es-en.JHU.2776', 'newstest2013.es-en.online-B', 'newstest2013.es-en.online-C', 'newstest2013.es-en.Shef-wproa.2779', 'newstest2013.es-en.online-G', 'newstest2013.es-en.DCU-Prompsit.2880', 'newstest2013.es-en.rbmt-3'], 
+     'en-de': ['newstest2013.en-de.TUBITAK.2633', 'newstest2013.en-de.uedin-wmt13.2638', 'newstest2013.en-de.PROMT.2789', 'newstest2013.en-de.Shef-wproa.2748', 'newstest2013.en-de.KIT_primary.2663', 'newstest2013.en-de.FDA.2842', 'newstest2013.en-de.rbmt-3', 'newstest2013.en-de.online-G', 'newstest2013.en-de.LIMSI-Ncode-SOUL-primary.2589', 'newstest2013.en-de.online-B', 'newstest2013.en-de.online-C', 'newstest2013.en-de.JHU.2888', 'newstest2013.en-de.online-A', 'newstest2013.en-de.rbmt-4', 'newstest2013.en-de.Stanford_NLP_Groups_Phrasal_Toolkit_-_Primary.2764', 'newstest2013.en-de.rbmt-1', 'newstest2013.en-de.uu_-_Uppsala_Unviersity.2698', 'newstest2013.en-de.uedin-syntax.2611', 'newstest2013.en-de.cu-zeman.2724', 'newstest2013.en-de.MES-reorder.2845', 'newstest2013.en-de.RWTH-Jane-primary.2676'], 
+     'en-cs': ['newstest2013.en-cs.commercial-2', 'newstest2013.en-cs.online-G', 'newstest2013.en-cs.cu-bojar_2013.2757', 'newstest2013.en-cs.commercial-1', 'newstest2013.en-cs.online-B', 'newstest2013.en-cs.MES:.2800', 'newstest2013.en-cs.uedin-wmt13.2836', 'newstest2013.en-cs.CU_TectoMT.2637', 'newstest2013.en-cs.cu-phrasefix.2745', 'newstest2013.en-cs.FDA.2878', 'newstest2013.en-cs.online-A', 'newstest2013.en-cs.cu-depfix.2792', 'newstest2013.en-cs.Shef-wproa.2678', 'newstest2013.en-cs.cu-zeman.2722'], 
+     'cs-en': ['newstest2013.cs-en.MES:.2796', 'newstest2013.cs-en.online-A', 'newstest2013.cs-en.FDA.2855', 'newstest2013.cs-en.Shef-wproa.2679', 'newstest2013.cs-en.uedin-wmt13.2834', 'newstest2013.cs-en.cu-zeman.2710', 'newstest2013.cs-en.cu-tamchyna.2875', 'newstest2013.cs-en.uedin-heafield-unconstrained.2596', 'newstest2013.cs-en.online-G', 'newstest2013.cs-en.JHU.2903', 'newstest2013.cs-en.online-B', 'newstest2013.cs-en.uedin-syntax.2603'], 
+     'ru-en': ['newstest2013.ru-en.OmniFluent_Translate_Russian-to-English_constrained.2668', 'newstest2013.ru-en.JHU.2677', 'newstest2013.ru-en.LIA.2650', 'newstest2013.ru-en.FDA.2852', 'newstest2013.ru-en.CMU-primary.2908', 'newstest2013.ru-en.cu-zeman.2742', 'newstest2013.ru-en.MES-QCRI:.2843', 'newstest2013.ru-en.rbmt-1', 'newstest2013.ru-en.rbmt-4', 'newstest2013.ru-en.balagur.2606', 'newstest2013.ru-en.online-G', 'newstest2013.ru-en.QCRI-MES.2856', 'newstest2013.ru-en.cu-karel.2896', 'newstest2013.ru-en.online-A', 'newstest2013.ru-en.UCAM_primary_multifrontend.2695', 'newstest2013.ru-en.uedin-syntax.2614', 'newstest2013.ru-en.commercial-3', 'newstest2013.ru-en.uedin-wmt13.2851', 'newstest2013.ru-en.umd.2892', 'newstest2013.ru-en.rbmt-3', 'newstest2013.ru-en.PROMT.2754', 'newstest2013.ru-en.online-B', 'newstest2013.ru-en.OmniFluent_Translate_Russian-to-English_unconstrained.2671'], 
+     'en-fr': ['newstest2013.en-fr.Its-LATL.2667', 'newstest2013.en-fr.rbmt-1', 'newstest2013.en-fr.PROMT.2752', 'newstest2013.en-fr.DCU__primary.2827', 'newstest2013.en-fr.LIMSI-Ncode-SOUL-primary.2587', 'newstest2013.en-fr.OmniFluent_Translate_English-to-French.2647', 'newstest2013.en-fr.online-G', 'newstest2013.en-fr.Stanford_NLP_Groups_Phrasal_Toolkit_-_Primary.2765', 'newstest2013.en-fr.online-A', 'newstest2013.en-fr.KIT_primary.2656', 'newstest2013.en-fr.MES:.2802', 'newstest2013.en-fr.RWTH_phrase-based_Jane_(primary).2639', 'newstest2013.en-fr.JHU.2683', 'newstest2013.en-fr.online-C', 'newstest2013.en-fr.MES-inflection-primary.2672', 'newstest2013.en-fr.online-B', 'newstest2013.en-fr.uedin-wmt13.2884', 'newstest2013.en-fr.cu-zeman.2728', 'newstest2013.en-fr.rbmt-3', 'newstest2013.en-fr.Its-LATL.2652', 'newstest2013.en-fr.OmniFluent_Translate_English-to-French.2645', 'newstest2013.en-fr.FDA.2890', 'newstest2013.en-fr.rbmt-4'], 
+     'fr-en': ['newstest2013.fr-en.JHU.2684', 'newstest2013.fr-en.online-A', 'newstest2013.fr-en.cu-zeman.2738', 'newstest2013.fr-en.FDA.2898', 'newstest2013.fr-en.uedin-wmt13.2838', 'newstest2013.fr-en.online-B', 'newstest2013.fr-en.KIT_primary.2658', 'newstest2013.fr-en.rbmt-4', 'newstest2013.fr-en.Shef-wproa.2780', 'newstest2013.fr-en.MES-SimplifiedFrench-primary.2662', 'newstest2013.fr-en.LIMSI-Ncode-SOUL-primary.2585', 'newstest2013.fr-en.rbmt-3', 'newstest2013.fr-en.online-C', 'newstest2013.fr-en.CMU_Tree-to-Tree.2893', 'newstest2013.fr-en.rbmt-1', 'newstest2013.fr-en.uedin-heafield-unconstrained.2755', 'newstest2013.fr-en.online-G', 'newstest2013.fr-en.DCU__primary.2828', 'newstest2013.fr-en.RWTH_primary.2595'], 
+     'en-ru': ['newstest2013.en-ru.rbmt-1', 'newstest2013.en-ru.rbmt-3', 'newstest2013.en-ru.online-G', 'newstest2013.en-ru.JHU.2666', 'newstest2013.en-ru.commercial-3', 'newstest2013.en-ru.cu-zeman.2730', 'newstest2013.en-ru.cu-karel.2894', 'newstest2013.en-ru.PROMT.2753', 'newstest2013.en-ru.FDA.2831', 'newstest2013.en-ru.online-B', 'newstest2013.en-ru.online-A', 'newstest2013.en-ru.CMU-primary.2910', 'newstest2013.en-ru.QCRI-MES.2854', 'newstest2013.en-ru.JHU.2918', 'newstest2013.en-ru.LIA.2651', 'newstest2013.en-ru.balagur.2693', 'newstest2013.en-ru.MES-QCRI:.2848', 'newstest2013.en-ru.rbmt-4', 'newstest2013.en-ru.uedin-wmt13.2837'], 
+     'en-es': ['newstest2013.en-es.cu-zeman.2726', 'newstest2013.en-es.TALP-UPC.2640', 'newstest2013.en-es.rbmt-1', 'newstest2013.en-es.uedin-wmt13.2835', 'newstest2013.en-es.online-B', 'newstest2013.en-es.FDA.2865', 'newstest2013.en-es.online-C', 'newstest2013.en-es.online-G', 'newstest2013.en-es.JHU.2791', 'newstest2013.en-es.online-A', 'newstest2013.en-es.dcu-prompsit-pbsmt.2691', 'newstest2013.en-es.rbmt-4', 'newstest2013.en-es.MES:.2803', 'newstest2013.en-es.DCU_prompsit.2846', 'newstest2013.en-es.PROMT.2751', 'newstest2013.en-es.rbmt-3', 'newstest2013.en-es.LIMSI-Ncode.2593', 'newstest2013.en-es.Shef-wproa.2778'], 
+     'de-en': ['newstest2013.de-en.MES:.2916', 'newstest2013.de-en.desrt.2704', 'newstest2013.de-en.MES-Szeged-reorder-split-primary.2682', 'newstest2013.de-en.JHU.2887', 'newstest2013.de-en.cu-zeman.2720', 'newstest2013.de-en.CNGL_DCU.2703', 'newstest2013.de-en.TUBITAK.2613', 'newstest2013.de-en.LIMSI-Ncode-SOUL-primary.2591', 'newstest2013.de-en.rbmt-3', 'newstest2013.de-en.uedin-wmt13.2636', 'newstest2013.de-en.uedin-syntax.2605', 'newstest2013.de-en.Shef-wproa.2761', 'newstest2013.de-en.online-G', 'newstest2013.de-en.online-C', 'newstest2013.de-en.FDA.2867', 'newstest2013.de-en.online-A', 'newstest2013.de-en.RWTH-Jane-primary.2615', 'newstest2013.de-en.rbmt-4', 'newstest2013.de-en.rbmt-1', 'newstest2013.de-en.online-B', 'newstest2013.de-en.umd.2922', 'newstest2013.de-en.QUAERO_primary.2601', 'newstest2013.de-en.KIT_primary.2653']}
+    
+    def references(self, langpair):
+        return io.open(self.refpath+langpair.partition('-')[2], 'r').readlines()
+    
+class WMT12(WMTdata):
+    refpath = 'data/WMT12/references/newstest2012-ref.'
+    sysoutpath = "data/WMT12/system-outputs/newstest2012/"
+    langpairs = ['en-cs', 'en-de', 'es-en', 'en-es', 'cs-en', 'en-fr', 
+                 'de-en', 'fr-en']
+    systemoutputs = \
+    {'es-en': ['newstest2012.es-en.onlineF', 'newstest2012.es-en.onlineD', 'newstest2012.es-en.onlineA', 'newstest2012.es-en.GTH-UPM', 'newstest2012.es-en.uk-dan-moses', 'newstest2012.es-en.UPC', 'newstest2012.es-en.uedin-wmt12', 'newstest2012.es-en.jhu-hiero', 'newstest2012.es-en.QCRI--primary', 'newstest2012.es-en.onlineE', 'newstest2012.es-en.onlineC', 'newstest2012.es-en.onlineB'], 
+    'en-de': ['newstest2012.en-de.LIMSI-Ncode-Constrained-Primary', 'newstest2012.en-de.onlineC', 'newstest2012.en-de.jhu-hiero', 'newstest2012.en-de.onlineE', 'newstest2012.en-de.uedin-williams', 'newstest2012.en-de.DFKI-hunsicker', 'newstest2012.en-de.rwth-primary', 'newstest2012.en-de.onlineB', 'newstest2012.en-de.uk-dan-moses', 'newstest2012.en-de.onlineF', 'newstest2012.en-de.KIT_Phrase-Based_SMT_System', 'newstest2012.en-de.uedin-wmt12', 'newstest2012.en-de.onlineA', 'newstest2012.en-de.onlineD', 'newstest2012.en-de.dfki-berlin'], 
+    'en-cs': ['newstest2012.en-cs.onlineA', 'newstest2012.en-cs.SFU', 'newstest2012.en-cs.cu-tamch-boj', 'newstest2012.en-cs.commercial2', 'newstest2012.en-cs.jhu-hiero', 'newstest2012.en-cs.cu-bojar_2012', 'newstest2012.en-cs.cu-poor-comb', 'newstest2012.en-cs.cu-depfix', 'newstest2012.en-cs.CU_TectoMT', 'newstest2012.en-cs.uedin-wmt12', 'newstest2012.en-cs.uk-dan-moses', 'newstest2012.en-cs.onlineB', 'newstest2012.en-cs.pctrans2010'], 'cs-en': ['newstest2012.cs-en.cu-bojar', 'newstest2012.cs-en.jhu-heiro', 'newstest2012.cs-en.uedin-wmt12', 'newstest2012.cs-en.onlineA', 'newstest2012.cs-en.uk-dan-moses', 'newstest2012.cs-en.onlineB', '.DS_Store'], 
+    'en-fr': ['newstest2012.en-fr.KIT_Phrase-Based_SMT_System', 'newstest2012.en-fr.onlineB', 'newstest2012.en-fr.Its-LATL', 'newstest2012.en-fr.onlineE', 'newstest2012.en-fr.jhu-hiero', 'newstest2012.en-fr.onlineA', 'newstest2012.en-fr.onlineC', 'newstest2012.en-fr.onlineF', 'newstest2012.en-fr.LIMSI-Ncode-Constrained-Primary', 'newstest2012.en-fr.onlineD', 'newstest2012.en-fr.uedin-wmt12', 'newstest2012.en-fr.LIUM_EN-FR_12', 'newstest2012.en-fr.uk-dan-moses', 'newstest2012.en-fr.PROMT_DeepHybrid', 'newstest2012.en-fr.RWTH-Jane2-HPBT-constrained'], 
+    'fr-en': ['newstest2012.fr-en.onlineE', 'newstest2012.fr-en.onlineA', 'newstest2012.fr-en.cmu-avenue', 'newstest2012.fr-en.jhu-hiero', 'newstest2012.fr-en.KIT_Phrase-Based_SMT_System', 'newstest2012.fr-en.onlineC', 'newstest2012.fr-en.RWTH-PBT-constrained', 'newstest2012.fr-en.uk-dan-moses', 'newstest2012.fr-en.LIMSI-Ncode-Constrained-Primary', 'newstest2012.fr-en.SFU_-_Kriya', 'newstest2012.fr-en.LIUM_FR-EN_12', 'newstest2012.fr-en.uedin-wmt12', 'newstest2012.fr-en.onlineD', 'newstest2012.fr-en.onlineF', 'newstest2012.fr-en.onlineB'], 
+    'en-es': ['newstest2012.en-es.jhu-hiero', 'newstest2012.en-es.onlineE', 'newstest2012.en-es.onlineD', 'newstest2012.en-es.uedin-wmt12', 'newstest2012.en-es.onlineA', 'newstest2012.en-es.UPC', 'newstest2012.en-es.onlineF', 'newstest2012.en-es.onlineB', 'newstest2012.en-es.uk-dan-moses', 'newstest2012.en-es.onlineC', 'newstest2012.en-es.PROMT_DeepHybrid'], 
+    'de-en': ['newstest2012.de-en.UG-WMT12', 'newstest2012.de-en.uedin-wmt12', 'newstest2012.de-en.uk-dan-moses', 'newstest2012.de-en.LIMSI-Ncode-Constrained-Primary', 'newstest2012.de-en.KIT_Phrase-Based_SMT_System', 'newstest2012.de-en.jhu-hiero', 'newstest2012.de-en.QCRI--primary', 'newstest2012.de-en.RWTH_primary', 'newstest2012.de-en.onlineD', 'newstest2012.de-en.onlineC', 'newstest2012.de-en.onlineF', 'newstest2012.de-en.dfki-berlin', 'newstest2012.de-en.quaero_primary', 'newstest2012.de-en.onlineE', 'newstest2012.de-en.onlineA', 'newstest2012.de-en.onlineB']}
+    
+    def references(self, langpair):
+        return io.open(self.refpath+langpair.partition('-')[2], 'r').readlines()
+
+class WMT11(WMTdata):
+    refpath = 'data/WMT11/references/newstest2011-ref.'
+    sysoutpath = "data/WMT11/system-outputs/newstest2011/"
+    langpairs = ['en-de', 'es-en', 'en-es', 'en-fr', 'de-en', 'en-cz', 
+                 'fr-en', 'cz-en']
+    systemoutputs = \
+    {'cz-en': ['newstest2011.cz-en.uppsala-contrastive', 'newstest2011.cz-en.online-B', 'newstest2011.cz-en.cu-bojar-contrastive', 'newstest2011.cz-en.cst-contrastive', 'newstest2011.cz-en.jhu-contrastive', 'newstest2011.cz-en.systran', 'newstest2011.cz-en.uppsala', 'newstest2011.cz-en.cst', 'newstest2011.cz-en.jhu', 'newstest2011.cz-en.cu-bojar', 'newstest2011.cz-en.cu-zeman', 'newstest2011.cz-en.udein'], 
+    'es-en': ['newstest2011.es-en.rbmt-2', 'newstest2011.es-en.rbmt-3', 'newstest2011.es-en.cu-zeman', 'newstest2011.es-en.alacant', 'newstest2011.es-en.koc-contrastive', 'newstest2011.es-en.hyderabad', 'newstest2011.es-en.systran', 'newstest2011.es-en.upm', 'newstest2011.es-en.online-B', 'newstest2011.es-en.online-A', 'newstest2011.es-en.rbmt-1', 'newstest2011.es-en.rbmt-4', 'newstest2011.es-en.rbmt-5', 'newstest2011.es-en.udein', 'newstest2011.es-en.ufal-um', 'newstest2011.es-en.koc'], 
+    'en-cz': ['newstest2011.en-cz.online-B', 'newstest2011.en-cz.commercial1', 'newstest2011.en-cz.udein', 'newstest2011.en-cz.cu-marecek', 'newstest2011.en-cz.cu-zeman', 'newstest2011.en-cz.jhu-contrastive', 'newstest2011.en-cz.cu-tamchyna-contrastive', 'newstest2011.en-cz.cu-tamchyna', 'newstest2011.en-cz.commercial2', 'newstest2011.en-cz.cu-popel', 'newstest2011.en-cz.cu-bojar-contrastive', 'newstest2011.en-cz.cu-bojar', 'newstest2011.en-cz.udein-contrastive', 'newstest2011.en-cz.jhu'], 
+    'en-de': ['newstest2011.en-de.limsi-contrastive', 'newstest2011.en-de.illc-uva-contrastive', 'newstest2011.en-de.dfki-xu-contrastive', 'newstest2011.en-de.jhu', 'newstest2011.en-de.kit', 'newstest2011.en-de.dfki-federmann-contrastive', 'newstest2011.en-de.rbmt-5', 'newstest2011.en-de.rbmt-3', 'newstest2011.en-de.uow-contrastive', 'newstest2011.en-de.illc-uva', 'newstest2011.en-de.uow', 'newstest2011.en-de.cu-zeman', 'newstest2011.en-de.online-A', 'newstest2011.en-de.uppsala', 'newstest2011.en-de.dfki-xu', 'newstest2011.en-de.rbmt-2', 'newstest2011.en-de.cu-tamchyna-contrastive3', 'newstest2011.en-de.koc', 'newstest2011.en-de.copenhagen', 'newstest2011.en-de.online-B', 'newstest2011.en-de.cu-tamchyna', 'newstest2011.en-de.limsi-contrastive2', 'newstest2011.en-de.uppsala-contrastive', 'newstest2011.en-de.cu-tamchyna-contrastive', 'newstest2011.en-de.koc-contrastive', 'newstest2011.en-de.limsi', 'newstest2011.en-de.dfki-federmann', 'newstest2011.en-de.jhu-contrastive', 'newstest2011.en-de.dfki-federmann-contrastive2', 'newstest2011.en-de.rwth-freitag', 'newstest2011.en-de.liu', 'newstest2011.en-de.rbmt-1', 'newstest2011.en-de.cu-tamchyna-contrastive2', 'newstest2011.en-de.udein', 'newstest2011.en-de.rbmt-4'], 
+    'fr-en': ['newstest2011.fr-en.rbmt-3', 'newstest2011.fr-en.rbmt-5', 'newstest2011.fr-en.cmu-denkowski', 'newstest2011.fr-en.lium', 'newstest2011.fr-en.online-A', 'newstest2011.fr-en.limsi-contrastive', 'newstest2011.fr-en.rbmt-1', 'newstest2011.fr-en.cu-zeman', 'newstest2011.fr-en.cmu-denkowski-contrastive', 'newstest2011.fr-en.online-B', 'newstest2011.fr-en.kit', 'newstest2011.fr-en.rwth-huck', 'newstest2011.fr-en.cmu-hanneman-contrastive', 'newstest2011.fr-en.cmu-hanneman', 'newstest2011.fr-en.systran', 'newstest2011.fr-en.lia-lig', 'newstest2011.fr-en.rwth-huck-contrastive2', 'newstest2011.fr-en.rbmt-2', 'newstest2011.fr-en.jhu', 'newstest2011.fr-en.rwth-huck-contrastive', 'newstest2011.fr-en.udein', 'newstest2011.fr-en.lia-lig-contrastive', 'newstest2011.fr-en.limsi', 'newstest2011.fr-en.rbmt-4'], 
+    'en-fr': ['newstest2011.en-fr.rwth-huck', 'newstest2011.en-fr.rbmt-4', 'newstest2011.en-fr.rwth-huck-contrastive', 'newstest2011.en-fr.limsi-contrastive', 'newstest2011.en-fr.rwth-huck-contrastive2', 'newstest2011.en-fr.latl-geneva', 'newstest2011.en-fr.uppsala-fbk', 'newstest2011.en-fr.lium', 'newstest2011.en-fr.cu-zeman', 'newstest2011.en-fr.uppsala', 'newstest2011.en-fr.jhu', 'newstest2011.en-fr.online-B', 'newstest2011.en-fr.rbmt-2', 'newstest2011.en-fr.udein', 'newstest2011.en-fr.udein-contrastive', 'newstest2011.en-fr.online-A', 'newstest2011.en-fr.rbmt-5', 'newstest2011.en-fr.rbmt-1', 'newstest2011.en-fr.limsi', 'newstest2011.en-fr.rbmt-3', 'newstest2011.en-fr.limsi-contrastive2', 'newstest2011.en-fr.kit'], 'en-es': ['newstest2011.en-es.ceu-upv-contrastive2', 'newstest2011.en-es.online-B', 'newstest2011.en-es.ceu-upv-contrastive4', 'newstest2011.en-es.ceu-upv-contrastive3', 'newstest2011.en-es.uppsala', 'newstest2011.en-es.uow-contrastive', 'newstest2011.en-es.ceu-upv', 'newstest2011.en-es.online-A', 'newstest2011.en-es.rbmt-5', 'newstest2011.en-es.udein', 'newstest2011.en-es.rbmt-3', 'newstest2011.en-es.udein-contrastive', 'newstest2011.en-es.promt', 'newstest2011.en-es.rbmt-4', 'newstest2011.en-es.cu-zeman', 'newstest2011.en-es.koc', 'newstest2011.en-es.promt-contrastive', 'newstest2011.en-es.rbmt-1', 'newstest2011.en-es.upm', 'newstest2011.en-es.ceu-upv-contrastive', 'newstest2011.en-es.rbmt-2', 'newstest2011.en-es.koc-contrastive', 'newstest2011.en-es.uow'], 
+    'de-en': ['newstest2011.de-en.dfki-xu', 'newstest2011.de-en.rbmt-2', 'newstest2011.de-en.dfki-xu-contrastive', 'newstest2011.de-en.rwth-wuebker', 'newstest2011.de-en.rbmt-3', 'newstest2011.de-en.kit', 'newstest2011.de-en.koc-contrastive', 'newstest2011.de-en.cu-zeman', 'newstest2011.de-en.liu', 'newstest2011.de-en.online-B', 'newstest2011.de-en.udein', 'newstest2011.de-en.koc', 'newstest2011.de-en.cst-contrastive', 'newstest2011.de-en.limsi-contrastive', 'newstest2011.de-en.rbmt-5', 'newstest2011.de-en.jhu', 'newstest2011.de-en.rwth-freitag-contrastive', 'newstest2011.de-en.rbmt-1', 'newstest2011.de-en.limsi', 'newstest2011.de-en.jhu-contrastive', 'newstest2011.de-en.rbmt-4', 'newstest2011.de-en.linguatec', 'newstest2011.de-en.uppsala', 'newstest2011.de-en.cmu-dyer', 'newstest2011.de-en.online-A', 'newstest2011.de-en.cst']}
+
+    def references(self, langpair):
+        return io.open(self.refpath+langpair.partition('-')[2], 'r').readlines()
+
+class WMT10(WMTdata):
+    refpath = 'data/WMT10/references/newssyscombtest2010.'
+    sysoutpath = "data/WMT10/system-outputs/newssyscombtest/"
+    langpairs = ['en-de', 'es-en', 'en-es', 'en-fr', 'de-en', 'en-cz', 
+                 'fr-en', 'cz-en', 'xx-en']
+    systemoutputs = \
+    {'cz-en': ['newssyscombtest2010.cz-en.upv-combo', 'newssyscombtest2010.cz-en.rwth-combo', 'newssyscombtest2010.cz-en.cmu-heafield-combo', 'newssyscombtest2010.cz-en.uedin', 'newssyscombtest2010.cz-en.cu-zeman', 'newssyscombtest2010.cz-en.cmu', 'newssyscombtest2010.cz-en.onlineB', 'newssyscombtest2010.cz-en.bbn-combo', 'newssyscombtest2010.cz-en.cu-bojar', 'newssyscombtest2010.cz-en.upv-combo-secondary-set-median', 'newssyscombtest2010.cz-en.jhu-combo', 'newssyscombtest2010.cz-en.onlineA', 'newssyscombtest2010.cz-en.aalto'], 
+    'es-en': ['newssyscombtest2010.es-en.bbn-combo', 'newssyscombtest2010.es-en.onlineB', 'newssyscombtest2010.es-en.cambridge', 'newssyscombtest2010.es-en.onlineA', 'newssyscombtest2010.es-en.cmu-heafield-combo', 'newssyscombtest2010.es-en.cu-zeman', 'newssyscombtest2010.es-en.dfki', 'newssyscombtest2010.es-en.upv-combo-secondary-set-median', 'newssyscombtest2010.es-en.cmu-heafield-combo-secondary', 'newssyscombtest2010.es-en.columbia', 'newssyscombtest2010.es-en.huicong', 'newssyscombtest2010.es-en.jhu-combo', 'newssyscombtest2010.es-en.jhu', 'newssyscombtest2010.es-en.uedin', 'newssyscombtest2010.es-en.upc', 'newssyscombtest2010.es-en.upv-combo'], 
+    'en-cz': ['newssyscombtest2010.en-cz.dcu-combo', 'newssyscombtest2010.en-cz.cu-bojar', 'newssyscombtest2010.en-cz.upv-combo-secondary-set-median', 'newssyscombtest2010.en-cz.pc-trans', 'newssyscombtest2010.en-cz.eurotrans', 'newssyscombtest2010.en-cz.dcu', 'newssyscombtest2010.en-cz.uedin', 'newssyscombtest2010.en-cz.cmu-heafield-combo', 'newssyscombtest2010.en-cz.sfu', 'newssyscombtest2010.en-cz.onlineB', 'newssyscombtest2010.en-cz.upv-combo', 'newssyscombtest2010.en-cz.cu-tecto', 'newssyscombtest2010.en-cz.rwth-combo', 'newssyscombtest2010.en-cz.onlineA', 'newssyscombtest2010.en-cz.koc-combo', 'newssyscombtest2010.en-cz.potsdam', 'newssyscombtest2010.en-cz.koc-combo-secondary-competitivetrans', 'newssyscombtest2010.en-cz.koc', 'newssyscombtest2010.en-cz.cu-zeman'], 
+    'en-de': ['newssyscombtest2010.en-de.dfki', 'newssyscombtest2010.en-de.jhu', 'newssyscombtest2010.en-de.koc-combo-secondary-competitivetrans', 'newssyscombtest2010.en-de.limsi', 'newssyscombtest2010.en-de.cu-zeman', 'newssyscombtest2010.en-de.rwth-combo', 'newssyscombtest2010.en-de.upv-combo-secondary-set-median', 'newssyscombtest2010.en-de.onlineB', 'newssyscombtest2010.en-de.fbk', 'newssyscombtest2010.en-de.uedin', 'newssyscombtest2010.en-de.rwth-combo-secondary', 'newssyscombtest2010.en-de.uppsala', 'newssyscombtest2010.en-de.kit', 'newssyscombtest2010.en-de.sfu', 'newssyscombtest2010.en-de.koc', 'newssyscombtest2010.en-de.upv-combo', 'newssyscombtest2010.en-de.cmu-heafield-combo-secondary', 'newssyscombtest2010.en-de.onlineA', 'newssyscombtest2010.en-de.koc-combo', 'newssyscombtest2010.en-de.cmu-heafield-combo', 'newssyscombtest2010.en-de.liu', 'newssyscombtest2010.en-de.rwth'], 
+    'fr-en': ['newssyscombtest2010.fr-en.limsi', 'newssyscombtest2010.fr-en.geneva', 'newssyscombtest2010.fr-en.cmu-heafield-combo-secondary', 'newssyscombtest2010.fr-en.dcu-combo', 'newssyscombtest2010.fr-en.cu-zeman', 'newssyscombtest2010.fr-en.dfki', 'newssyscombtest2010.fr-en.onlineA', 'newssyscombtest2010.fr-en.jhu-combo', 'newssyscombtest2010.fr-en.uedin', 'newssyscombtest2010.fr-en.lium', 'newssyscombtest2010.fr-en.rwth-combo-secondary', 'newssyscombtest2010.fr-en.jhu', 'newssyscombtest2010.fr-en.rwth-combo', 'newssyscombtest2010.fr-en.cmu-hyposel-combo-contrastive1', 'newssyscombtest2010.fr-en.nrc', 'newssyscombtest2010.fr-en.upv-combo', 'newssyscombtest2010.fr-en.onlineB', 'newssyscombtest2010.fr-en.huicong', 'newssyscombtest2010.fr-en.bbn-combo', 'newssyscombtest2010.fr-en.lium-combo-contrastive', 'newssyscombtest2010.fr-en.cmu-statxfer', 'newssyscombtest2010.fr-en.rwth', 'newssyscombtest2010.fr-en.lig', 'newssyscombtest2010.fr-en.rali', 'newssyscombtest2010.fr-en.cmu-hyposel-combo-contrastive2', 'newssyscombtest2010.fr-en.cmu-hyposel-combo', 'newssyscombtest2010.fr-en.upv-combo-secondary-set-median', 'newssyscombtest2010.fr-en.cmu-heafield-combo', 'newssyscombtest2010.fr-en.cambridge', 'newssyscombtest2010.fr-en.lium-combo'], 
+    'en-fr': ['newssyscombtest2010.en-fr.cmu-heafield-combo', 'newssyscombtest2010.en-fr.nrc', 'newssyscombtest2010.en-fr.uedin', 'newssyscombtest2010.en-fr.onlineB', 'newssyscombtest2010.en-fr.jhu', 'newssyscombtest2010.en-fr.cambridge', 'newssyscombtest2010.en-fr.eu', 'newssyscombtest2010.en-fr.koc-combo-secondary-competitivetrans', 'newssyscombtest2010.en-fr.rali', 'newssyscombtest2010.en-fr.cu-zeman', 'newssyscombtest2010.en-fr.lium', 'newssyscombtest2010.en-fr.onlineA', 'newssyscombtest2010.en-fr.rwth-combo-secondary', 'newssyscombtest2010.en-fr.dfki', 'newssyscombtest2010.en-fr.geneva', 'newssyscombtest2010.en-fr.rwth-combo', 'newssyscombtest2010.en-fr.limsi', 'newssyscombtest2010.en-fr.upv-combo-secondary-set-median', 'newssyscombtest2010.en-fr.koc-combo', 'newssyscombtest2010.en-fr.koc', 'newssyscombtest2010.en-fr.upv-combo', 'newssyscombtest2010.en-fr.rwth'], 
+    'en-es': ['newssyscombtest2010.en-es.cu-zeman', 'newssyscombtest2010.en-es.rwth-combo', 'newssyscombtest2010.en-es.uedin', 'newssyscombtest2010.en-es.koc-combo', 'newssyscombtest2010.en-es.upv', 'newssyscombtest2010.en-es.jhu', 'newssyscombtest2010.en-es.cmu-heafield-combo', 'newssyscombtest2010.en-es.dfki', 'newssyscombtest2010.en-es.upv-combo-secondary-set-median', 'newssyscombtest2010.en-es.onlineB', 'newssyscombtest2010.en-es.koc-combo-secondary-competitivetrans', 'newssyscombtest2010.en-es.cambridge', 'newssyscombtest2010.en-es.rwth-combo-secondary', 'newssyscombtest2010.en-es.koc', 'newssyscombtest2010.en-es.cmu-heafield-combo-secondary', 'newssyscombtest2010.en-es.onlineA', 'newssyscombtest2010.en-es.sfu', 'newssyscombtest2010.en-es.dcu', 'newssyscombtest2010.en-es.upb-combo', 'newssyscombtest2010.en-es.upv-nnlm'], 
+    'de-en': ['newssyscombtest2010.de-en.fbk', 'newssyscombtest2010.de-en.rwth', 'newssyscombtest2010.de-en.rwth-combo', 'newssyscombtest2010.de-en.kit', 'newssyscombtest2010.de-en.cu-zeman', 'newssyscombtest2010.de-en.umd', 'newssyscombtest2010.de-en.cmu-hyposel-combo', 'newssyscombtest2010.de-en.cmu-hyposel-combo-contrastive2', 'newssyscombtest2010.de-en.uu-ms', 'newssyscombtest2010.de-en.limsi', 'newssyscombtest2010.de-en.aalto', 'newssyscombtest2010.de-en.uedin', 'newssyscombtest2010.de-en.jhu', 'newssyscombtest2010.de-en.uppsala', 'newssyscombtest2010.de-en.cmu-heafield-combo', 'newssyscombtest2010.de-en.cmu-hyposel-combo-contrastive1', 'newssyscombtest2010.de-en.rwth-combo-secondary', 'newssyscombtest2010.de-en.upv-combo', 'newssyscombtest2010.de-en.upv-combo-secondary-set-median', 'newssyscombtest2010.de-en.koc-combo-secondary-competitivetrans', 'newssyscombtest2010.de-en.huicong', 'newssyscombtest2010.de-en.cmu-heafield-combo-secondary', 'newssyscombtest2010.de-en.cmu', 'newssyscombtest2010.de-en.onlineB', 'newssyscombtest2010.de-en.dfki', 'newssyscombtest2010.de-en.jhu-combo', 'newssyscombtest2010.de-en.koc-combo', 'newssyscombtest2010.de-en.liu', 'newssyscombtest2010.de-en.onlineA', 'newssyscombtest2010.de-en.koc', 'newssyscombtest2010.de-en.bbn-combo'],
+    'xx-en': ['newssyscombtest2010.xx-en.cmu-heafield-combo-secondary', 'newssyscombtest2010.xx-en.bbn-combo', 'newssyscombtest2010.xx-en.cmu-heafield-combo']}
+
+    def references(self, langpair):
+        return io.open(self.refpath+langpair.partition('-')[2], 'r').readlines()
+
+
+class WMT09(WMTdata):    
+    refpath = 'data/WMT09/references/newstest2009.'
+    sysoutpath = "data/WMT09/system-outputs/newstest2009/"
+    langpairs = ['en-hu', 'en-de', 'es-en', 'en-es', 'en-fr', 'de-en', 
+                 'en-cz', 'fr-en', 'cz-en', 'hu-en']
+    systemoutputs = \
+    {'cz-en': ['cz-en.newstest2009.google', 'cz-en.newstest2009.uedin', 'cz-en.newstest2009.cu-bojar'], 
+    'es-en': ['es-en.newstest2009.nict', 'es-en.newstest2009.rbmt3', 'es-en.newstest2009.rbmt1', 'es-en.newstest2009.rwth', 'es-en.newstest2009.uedin', 'es-en.newstest2009.google', 'es-en.newstest2009.talp-upc', 'es-en.newstest2009.rbmt4', 'es-en.newstest2009.usaar'], 
+    'en-cz': ['en-cz.newstest2009.eurotranxp', 'en-cz.newstest2009.pctrans', 'en-cz.newstest2009.uedin', 'en-cz.newstest2009.cu-bojar', 'en-cz.newstest2009.google', 'en-cz.newstest2009.cu-tectomt'], 
+    'en-de': ['en-de.newstest2009.uedin', 'en-de.newstest2009.rbmt1', 'en-de.newstest2009.rbmt2', 'en-de.newstest2009.rbmt4', 'en-de.newstest2009.google', 'en-de.newstest2009.usaar', 'en-de.newstest2009.rwth', 'en-de.newstest2009.stuttgart', 'en-de.newstest2009.uka', 'en-de.newstest2009.rbmt3', 'en-de.newstest2009.liu'], 
+    'fr-en': ['fr-en.newstest2009.geneva', 'fr-en.newstest2009.rbmt4', 'fr-en.newstest2009.usaar', 'fr-en.newstest2009.lium-systran', 'fr-en.newstest2009.dcu', 'fr-en.newstest2009.rbmt1', 'fr-en.newstest2009.hkust', 'fr-en.newstest2009.google', 'fr-en.newstest2009.cmu-statxfer', 'fr-en.newstest2009.rwth', 'fr-en.newstest2009.uedin', 'fr-en.newstest2009.jhu', 'fr-en.newstest2009.uka', 'fr-en.newstest2009.limsi', 'fr-en.newstest2009.rbmt3'], 
+    'en-fr': ['en-fr.newstest2009.uka', 'en-fr.newstest2009.rbmt1', 'en-fr.newstest2009.limsi', 'en-fr.newstest2009.uedin', 'en-fr.newstest2009.rwth', 'en-fr.newstest2009.google', 'en-fr.newstest2009.rbmt4', 'en-fr.newstest2009.lium-systran', 'en-fr.newstest2009.dcu', 'en-fr.newstest2009.usaar', 'en-fr.newstest2009.geneva', 'en-fr.newstest2009.systran'], 
+    'en-hu': ['en-hu.newstest2009.uedin', 'en-hu.newstest2009.morpho'], 
+    'hu-en': ['hu-en.newstest2009.uedin', 'hu-en.newstest2009.umd', 'hu-en.newstest2009.morpho'], 
+    'en-es': ['en-es.newstest2009.rbmt3', 'en-es.newstest2009.talp-upc', 'en-es.newstest2009.rbmt1', 'en-es.newstest2009.nus', 'en-es.newstest2009.google', 'en-es.newstest2009.rwth', 'en-es.newstest2009.rbmt4', 'en-es.newstest2009.uedin', 'en-es.newstest2009.usaar'], 
+    'de-en': ['de-en.newstest2009.liu', 'de-en.newstest2009.uedin', 'de-en.newstest2009.google', 'de-en.newstest2009.geneva', 'de-en.newstest2009.rbmt3', 'de-en.newstest2009.usaar', 'de-en.newstest2009.rwth', 'de-en.newstest2009.rbmt4', 'de-en.newstest2009.jhu-tromble', 'de-en.newstest2009.stuttgart', 'de-en.newstest2009.systran', 'de-en.newstest2009.umd', 'de-en.newstest2009.uka', 'de-en.newstest2009.rbmt2', 'de-en.newstest2009.rbmt1']}
+
+    def references(self, langpair):
+        return io.open(self.refpath+langpair.partition('-')[2], 'r').readlines()
+
+class WMT08(WMTdata):
+    refpath = 'data/WMT08/references/newstest2008.'
+    sysoutpath = "data/WMT08/system-outputs/newstest2008/"
+    langpairs = ['de-es', 'en-hu', 'en-de', 'es-de', 'es-en', 'en-es', 'en-fr', 
+                 'de-en', 'en-cz', 'fr-en', 'cz-en']
+    systemoutputs = \
+    {'cz-en': ['cz-en.newstest2008.dcu', 'cz-en.newstest2008.uedin', 'cz-en.newstest2008.umd'], 
+    'es-en': ['es-en.newstest2008.rbmt4', 'es-en.newstest2008.cued-contrast', 'es-en.newstest2008.rbmt5', 'es-en.newstest2008.upc', 'es-en.newstest2008.ucb', 'es-en.newstest2008.saar-contrast', 'es-en.newstest2008.rbmt3', 'es-en.newstest2008.saar', 'es-en.newstest2008.cued', 'es-en.newstest2008.limsi', 'es-en.newstest2008.uedin', 'es-en.newstest2008.rbmt6', 'es-en.newstest2008.cmu-smt'], 'de-es': ['de-es.newstest2008.uedin'], 'en-cz': ['en-cz.newstest2008.pc-translator', 'en-cz.newstest2008.cu-bojar-contrast-2', 'en-cz.newstest2008.cu-bojar-contrast-1', 'en-cz.newstest2008.cu-tectomt', 'en-cz.newstest2008.uedin', 'en-cz.newstest2008.cu-bojar'], 
+    'en-de': ['en-de.newstest2008.liu', 'en-de.newstest2008.rbmt3', 'en-de.newstest2008.rbmt6', 'en-de.newstest2008.limsi', 'en-de.newstest2008.saar', 'en-de.newstest2008.uedin', 'en-de.newstest2008.rbmt5', 'en-de.newstest2008.saar-contrast', 'en-de.newstest2008.rbmt2', 'en-de.newstest2008.rbmt1', 'en-de.newstest2008.rbmt4'], 'es-de': ['es-de.newstest2008.uedin'], 
+    'fr-en': ['fr-en.newstest2008.saar', 'fr-en.newstest2008.lium-systran', 'fr-en.newstest2008.saar-contrast', 'fr-en.newstest2008.rbmt6', 'fr-en.newstest2008.rbmt4', 'fr-en.newstest2008.cued-contrast', 'fr-en.newstest2008.limsi', 'fr-en.newstest2008.cmu-statxfer', 'fr-en.newstest2008.cued', 'fr-en.newstest2008.lium-systran-contrast', 'fr-en.newstest2008.rbmt3', 'fr-en.newstest2008.cmu-statxfer-contrast', 'fr-en.newstest2008.uedin', 'fr-en.newstest2008.rbmt5'], 
+    'en-fr': ['en-fr.newstest2008.rbmt3', 'en-fr.newstest2008.limsi', 'en-fr.newstest2008.lium-systran', 'en-fr.newstest2008.saar', 'en-fr.newstest2008.uedin', 'en-fr.newstest2008.lium-systran-contrast', 'en-fr.newstest2008.rbmt4', 'en-fr.newstest2008.xerox-contrast', 'en-fr.newstest2008.saar-contrast', 'en-fr.newstest2008.rbmt1', 'en-fr.newstest2008.xerox', 'en-fr.newstest2008.rbmt6', 'en-fr.newstest2008.rbmt5'], 
+    'en-hu': ['en-hu.newstest2008.uedin'], 'en-es': ['en-es.newstest2008.saar', 'en-es.newstest2008.cmu-smt', 'en-es.newstest2008.saar-contrast', 'en-es.newstest2008.uedin', 'en-es.newstest2008.rbmt3', 'en-es.newstest2008.ucb', 'en-es.newstest2008.rbmt6', 'en-es.newstest2008.rbmt1', 'en-es.newstest2008.limsi', 'en-es.newstest2008.rbmt5', 'en-es.newstest2008.rbmt4', 'en-es.newstest2008.upc'], 
+    'de-en': ['de-en.newstest2008.rbmt1', 'de-en.newstest2008.uedin', 'de-en.newstest2008.rbmt5', 'de-en.newstest2008.liu', 'de-en.newstest2008.saar-contrast-2', 'de-en.newstest2008.rbmt3', 'de-en.newstest2008.rbmt2', 'de-en.newstest2008.rbmt6', 'de-en.newstest2008.cmu-statxfer', 'de-en.newstest2008.limsi', 'de-en.newstest2008.rbmt4', 'de-en.newstest2008.saar', 'de-en.newstest2008.saar-contrast']}
+
+    def references(self, langpair):
+        return io.open(self.refpath+langpair.partition('-')[2], 'r').readlines()
+
+
+WMT = {14: WMT14(), 13:WMT13(), 12:WMT12(), 11:WMT11(), 10:WMT10(),
+       9:WMT09(), 8:WMT08()}
+
+def retrieve_WMT_data(year):
+    for langpair in WMT[year].langpairs:
+        reference = WMT[year].references(langpair)
+        for system, system_output in WMT[year].system_outputs(langpair).items():
+            counter = 1
+            for ref, sysout in zip(reference, system_output):
+                yield langpair, system, ref.strip(), sysout.strip()
+
+
+
+for langpair, system, ref, sysout in retrieve_WMT_data(8):
+    print langpair, system, ref, sysout
+ 

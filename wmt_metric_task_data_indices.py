@@ -153,7 +153,8 @@ def retrieve_WMT_data(year):
                 yield langpair, system, ref.strip(), sysout.strip()
 
 
-for yr in range(8,15):
-    print yr
-    for i in retrieve_WMT_data(yr):
-        pass
+with io.open('wmt-metric.en', 'w', encoding='utf8') as fout:
+    for yr in range(8,15):
+        for line in retrieve_WMT_data(yr):
+            if line[0].endswith('en'):
+                fout.write(unicode("\t".join(line))+'\n')

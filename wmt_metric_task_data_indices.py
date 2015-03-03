@@ -14,8 +14,8 @@ class WMTdata:
 
 
 class WMT14(WMTdata):
-    refpath = "data/WMT14/references/newstest2014-ref."
-    sysoutpath = "data/WMT14/system-outputs/newstest2014/" 
+    refpath = "metric_data/WMT14/references/newstest2014-ref."
+    sysoutpath = "metric_data/WMT14/system-outputs/newstest2014/" 
     langpairs = ['hi-en', 'en-cs', 'en-de', 'en-hi', 'en-ru', 'cs-en', 'en-fr', 'de-en', 'ru-en', 'fr-en']
     systemoutputs =  \
     {'ru-en': ['newstest2014.kaznu1.3549.ru-en', 'newstest2014.rbmt1.0.ru-en', 'newstest2014.onlineG.0.ru-en', 'newstest2014.uedin-wmt14.3364.ru-en', 'newstest2014.uedin-syntax.3166.ru-en', 'newstest2014.shad-wmt14.3464.ru-en', 'newstest2014.rbmt4.0.ru-en', 'newstest2014.onlineA.0.ru-en', 'newstest2014.PROMT-Rule-based.3085.ru-en', 'newstest2014.onlineB.0.ru-en', 'newstest2014.PROMT-Hybrid.3084.ru-en', 'newstest2014.AFRL-Post-edited.3431.ru-en', 'newstest2014.AFRL.3349.ru-en'], 
@@ -30,8 +30,8 @@ class WMT14(WMTdata):
      'en-cs': ['newstest2014.CU-TectoMT.2950.en-cs', 'newstest2014.cu-funky.3515.en-cs', 'newstest2014.cu-depfix.3452.en-cs', 'newstest2014.onlineA.0.en-cs', 'newstest2014.cu-bojar.3483.en-cs', 'newstest2014.commercial2.3222.en-cs', 'newstest2014.uedin-wmt14.3021.en-cs', 'newstest2014.uedin-unconstrained.3424.en-cs', 'newstest2014.onlineB.0.en-cs', 'newstest2014.commercial1.3556.en-cs']}
 
 class WMT13(WMTdata):
-    refpath = 'data/WMT13/references/newstest2013-ref.'
-    sysoutpath = "data/WMT13/system-outputs/newstest2013/"
+    refpath = 'metric_data/WMT13/references/newstest2013-ref.'
+    sysoutpath = "metric_data/WMT13/system-outputs/newstest2013/"
     langpairs = ['en-cs', 'en-de', 'en-ru', 'es-en', 'en-es', 'cs-en', 'en-fr', 
                  'de-en', 'ru-en', 'fr-en']
     systemoutputs = \
@@ -50,8 +50,8 @@ class WMT13(WMTdata):
         return io.open(self.refpath+langpair.partition('-')[2], 'r', encoding='utf8').readlines()
     
 class WMT12(WMTdata):
-    refpath = 'data/WMT12/references/newstest2012-ref.'
-    sysoutpath = "data/WMT12/system-outputs/newstest2012/"
+    refpath = 'metric_data/WMT12/references/newstest2012-ref.'
+    sysoutpath = "metric_data/WMT12/system-outputs/newstest2012/"
     langpairs = ['en-cs', 'en-de', 'es-en', 'en-es', 'cs-en', 'en-fr', 
                  'de-en', 'fr-en']
     systemoutputs = \
@@ -67,8 +67,8 @@ class WMT12(WMTdata):
         return io.open(self.refpath+langpair.partition('-')[2], 'r', encoding='utf8').readlines()
 
 class WMT11(WMTdata):
-    refpath = 'data/WMT11/references/newstest2011-ref.'
-    sysoutpath = "data/WMT11/system-outputs/newstest2011/"
+    refpath = 'metric_data/WMT11/references/newstest2011-ref.'
+    sysoutpath = "metric_data/WMT11/system-outputs/newstest2011/"
     langpairs = ['en-de', 'es-en', 'en-es', 'en-fr', 'de-en', 'en-cz', 
                  'fr-en', 'cz-en']
     systemoutputs = \
@@ -84,8 +84,8 @@ class WMT11(WMTdata):
         return io.open(self.refpath+langpair.partition('-')[2], 'r', encoding='utf8').readlines()
 
 class WMT10(WMTdata):
-    refpath = 'data/WMT10/references/newssyscombtest2010.'
-    sysoutpath = "data/WMT10/system-outputs/newssyscombtest/"
+    refpath = 'metric_data/WMT10/references/newssyscombtest2010.'
+    sysoutpath = "metric_data/WMT10/system-outputs/newssyscombtest/"
     langpairs = ['en-de', 'es-en', 'en-es', 'en-fr', 'de-en', 'en-cz', 
                  'fr-en', 'cz-en', 'xx-en']
     systemoutputs = \
@@ -104,8 +104,8 @@ class WMT10(WMTdata):
 
 
 class WMT09(WMTdata):    
-    refpath = 'data/WMT09/references/newstest2009.'
-    sysoutpath = "data/WMT09/system-outputs/newstest2009/"
+    refpath = 'metric_data/WMT09/references/newstest2009.'
+    sysoutpath = "metric_data/WMT09/system-outputs/newstest2009/"
     langpairs = ['en-hu', 'en-de', 'es-en', 'en-es', 'en-fr', 'de-en', 
                  'en-cz', 'fr-en', 'cz-en', 'hu-en']
     systemoutputs = \
@@ -124,8 +124,8 @@ class WMT09(WMTdata):
         return io.open(self.refpath+langpair.partition('-')[2], 'r', encoding='utf8').readlines()
 
 class WMT08(WMTdata):
-    refpath = 'data/WMT08/references/newstest2008.'
-    sysoutpath = "data/WMT08/system-outputs/newstest2008/"
+    refpath = 'metric_data/WMT08/references/newstest2008.'
+    sysoutpath = "metric_data/WMT08/system-outputs/newstest2008/"
     langpairs = ['de-es', 'en-hu', 'en-de', 'es-de', 'es-en', 'en-es', 'en-fr', 
                  'de-en', 'en-cz', 'fr-en', 'cz-en']
     systemoutputs = \
@@ -152,9 +152,17 @@ def retrieve_WMT_data(year):
             for ref, sysout in zip(reference, system_output):
                 yield langpair, system, ref.strip(), sysout.strip()
 
+for yr in range(8,15):
+    for line in retrieve_WMT_data(yr):
+        if line[0].endswith('en'):
+            print line
 
+'''
 with io.open('wmt-metric.en', 'w', encoding='utf8') as fout:
     for yr in range(8,15):
         for line in retrieve_WMT_data(yr):
             if line[0].endswith('en'):
                 fout.write(unicode("\t".join(line))+'\n')
+
+
+'''

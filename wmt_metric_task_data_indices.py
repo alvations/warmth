@@ -2,7 +2,7 @@
 
 import io, os, re
 from collections import defaultdict
-import sys; reload(sys); sys.setdefaultencoding("utf-8")
+#import sys; reload(sys); sys.setdefaultencoding("utf-8")
 
 class WMTdata:
     def system_outputs(self, langpair):
@@ -155,7 +155,7 @@ def retrieve_WMT_data(year):
 for yr in range(8,15):
     for line in retrieve_WMT_data(yr):
         if line[0].endswith('en'):
-            print line
+            print(line)
 
 '''
 with io.open('wmt-metric.en', 'w', encoding='utf8') as fout:

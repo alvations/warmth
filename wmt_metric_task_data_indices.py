@@ -1,7 +1,7 @@
 #!/usr/bin/env python -*- coding: utf-8 -*-
 
 import io, os, re
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 #import sys; reload(sys); sys.setdefaultencoding("utf-8")
 
 class WMTdata:
@@ -152,17 +152,43 @@ def retrieve_WMT_data(year):
             for ref, sysout in zip(reference, system_output):
                 yield langpair, system, ref.strip(), sysout.strip()
 
-for yr in range(8,15):
-    for line in retrieve_WMT_data(yr):
-        if line[0].endswith('en'):
-            print(line)
+def clean(line):
+    return line.strip().replace(u'\u0094', '"').replace(u'\u0093', '"').replace(u'\u0092', "'").replace(u'\u0096', '"').replace(u'\u0084', '').replace(u'\u200B', '').replace('\u007F ', '').replace('\u008A ', '').replace('\u009D ', '').replace(' \u0085', '').replace('\u0085', '').replace('\u0089', '').replace('\u008D', '').replace('\u008C', '').replace(' \u200E', '').replace('\u200E', '')
+
+def retrieve_WMT_trglang(trglang):
+    references = defaultdict(list)
+    hippo = defaultdict(list)
+    Hypothesis = namedtuple('Hypothesis', 'hyp, sysid, rowid')
+    
+    for yr in range(8,15):
+        for rowid, line in enumerate(retrieve_WMT_data(yr)):
+            if line[0].endswith(trglang):
+                langpair, sysid, hyp, ref = line
+                hyp = clean(hyp).strip()
+                ref = clean(ref).strip()
+                if not hyp or not ref:
+                    continue
+                #year = str(2000 + yr)
+                Hypothesis(hyp, sysid, rowid)
+                hippo[hyp].append(rowid)
+                references[ref].append(Hypothesis)
+                yield langpair, sysid, hyp, ref
 
 '''
-with io.open('wmt-metric.en', 'w', encoding='utf8') as fout:
+# To get all translation and reference pairs for a target lang for all years.
+lang = 'de'
+with io.open('wmt-metric.'+lang, 'w', encoding='utf8') as fout:
+    for langpair, sysid, hyp, ref in retrieve_WMT_trglang(lang):
+        #print (langpair, sysid, hyp, ref)
+        fout.write(unicode("\t".join([langpair, sysid, hyp, ref]))+'\n')
+        
+
+# To get all translation and reference pairs for a target lang for a given year.
+lang = 'en'
+with io.open('wmt-metric.'+lang, 'w', encoding='utf8') as fout:
     for yr in range(8,15):
         for line in retrieve_WMT_data(yr):
-            if line[0].endswith('en'):
+            if line[0].endswith(lang):
+                #print (line)
                 fout.write(unicode("\t".join(line))+'\n')
-
-
 '''

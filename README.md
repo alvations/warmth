@@ -135,6 +135,25 @@ python warmth_core.py                # print coverage stats as JSON
 python build.py --push-to-hub alvations/warmth   # needs HF auth + network
 ```
 
+### Enriching `doc_id` and segment-level `human_score`
+
+Document ids and most human judgements are not in the plain-text distributions
+this dataset is built from — they live in the WMT `test.tgz` **SGML** files and
+in separate manual-evaluation packages on statmt.org. [`enrich.py`](enrich.py)
+merges them into the parquet in place (schema unchanged), so run it wherever
+those files are reachable:
+
+```bash
+# extract each year's test.tgz, then point at the .sgm files
+python enrich.py --sgm-dir /path/to/wmt_test_sgm --parquet-dir data
+# add per-segment human scores from a year|langpair|system|segment_id|score file
+python enrich.py --human-scores da-seg-scores-2013.tsv --parquet-dir data
+python enrich.py --self-test         # verify the SGM parser, no files needed
+```
+
+The segment order of the `.txt` files matches the SGML `<seg>` order exactly
+(verified against `newstest2013`), so doc ids map cleanly onto `segment_id`.
+
 Building in-memory without the parquet shards:
 
 ```python
@@ -148,14 +167,15 @@ ds = Dataset.from_generator(lambda: (r._asdict() for r in iter_records()))
 - **Document ids (`doc_id`) are `null`.** The metric-task packages here are the
   plain line-aligned `.txt` distributions, which carry no document boundaries.
   Doc ids live only in the original SGML (`*-src.sgm` / `*-ref.sgm`) packages on
-  statmt.org. The field exists so an SGML-parsing enrichment pass can populate it
-  without a schema change.
+  statmt.org. Run [`enrich.py --sgm-dir`](enrich.py) against those files to
+  populate the field (no schema change).
 - **Human judgements are sparse.** Only WMT14 ships evaluation scores in this
   repo, at **system level** (Direct Assessment). Segment-level human judgements
-  (ranking / DA / MQM) for the other editions are separate statmt.org packages.
-  When added they slot into `human_score` / `human_score_level` (use
-  `"segment"`), and multiple annotations per segment can be stored by emitting
-  multiple rows or extending the schema with an `annotations` list.
+  (ranking / DA / MQM) for the other editions are separate statmt.org packages;
+  merge them with [`enrich.py --human-scores`](enrich.py), which sets
+  `human_score` / `human_score_level` (`"segment"`). Multiple annotations per
+  segment can be stored by emitting multiple rows or extending the schema with
+  an `annotations` list.
 - **WMT14 has no source side locally.** WMT14 moved to per-direction (bilingual)
   test sets, so the source cannot be reconstructed from a reverse-direction
   reference (different sentence counts). Add a `sources/` dir to

@@ -144,12 +144,20 @@ merges them into the parquet in place (schema unchanged), so run it wherever
 those files are reachable:
 
 ```bash
-# extract each year's test.tgz, then point at the .sgm files
+# one command: download + extract the WMT test tarballs, then fill doc_id
+python enrich.py --fetch --parquet-dir data
+python enrich.py --fetch --years 2013 2014          # just some editions
+python enrich.py --fetch --base-url https://mirror/wmt{yy}/{name}   # if statmt is blocked
+
+# ...or point at .sgm files you already extracted
 python enrich.py --sgm-dir /path/to/wmt_test_sgm --parquet-dir data
 # add per-segment human scores from a year|langpair|system|segment_id|score file
 python enrich.py --human-scores da-seg-scores-2013.tsv --parquet-dir data
 python enrich.py --self-test         # verify the SGM parser, no files needed
 ```
+
+`--fetch` downloads through the standard `HTTPS_PROXY` / CA-bundle env and caches
+the tarballs, so re-runs are incremental.
 
 The segment order of the `.txt` files matches the SGML `<seg>` order exactly
 (verified against `newstest2013`), so doc ids map cleanly onto `segment_id`.

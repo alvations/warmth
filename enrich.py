@@ -30,8 +30,12 @@ source SGM of that year/language.
 
 Usage::
 
-    # extract each year's test.tgz so the .sgm files sit under one directory
+    # let the script download + extract the WMT test tarballs itself
+    python enrich.py --fetch --parquet-dir data
+    # ...or point at .sgm files you already extracted
     python enrich.py --sgm-dir /path/to/wmt_test_sgm --parquet-dir data
+    # ...or fetch from a mirror when statmt.org is unreachable
+    python enrich.py --fetch --base-url https://my.mirror/wmt{yy}/{name}
 
 --------------------------------------------------------------------------
 2. Segment-level human scores  (``--human-scores FILE ...``)
@@ -55,12 +59,108 @@ import glob
 import io
 import os
 import re
+import ssl
 import sys
+import tarfile
+import time
+import urllib.request
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
 from warmth_core import LANG_NORMALISE, YEARS
+
+# ---------------------------------------------------------------------------
+# Fetch + extract the WMT `test` tarballs (the SGML with document boundaries)
+# ---------------------------------------------------------------------------
+
+# Canonical statmt.org tarball names per edition (same set sacrebleu uses).
+WMT_TEST_TARBALLS = {
+    2008: "test.tgz",
+    2009: "test.tgz",
+    2010: "test.tgz",
+    2011: "test.tgz",
+    2012: "test.tgz",
+    2013: "test.tgz",
+    2014: "test-filtered.tgz",
+}
+DEFAULT_BASE_URL = "https://statmt.org/wmt{yy}/{name}"
+
+
+def _tarball_url(year, base_url):
+    """Format ``base_url`` with ``{yy}`` (two-digit year) and ``{name}``."""
+    return base_url.format(yy=str(year)[-2:], year=year,
+                           name=WMT_TEST_TARBALLS[year])
+
+
+def _download(url, dest, retries=4, timeout=120):
+    """Download ``url`` to ``dest`` with retries. Honours HTTPS_PROXY and the
+    system CA bundle (SSL_CERT_FILE / REQUESTS_CA_BUNDLE) already set in the env."""
+    ctx = ssl.create_default_context()
+    cafile = os.environ.get("SSL_CERT_FILE") or os.environ.get("REQUESTS_CA_BUNDLE")
+    if cafile and os.path.isfile(cafile):
+        ctx.load_verify_locations(cafile)
+    # build_opener keeps the default ProxyHandler, which reads the *_proxy env
+    # vars and honours no_proxy; we only override TLS to use the CA bundle.
+    opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx))
+    last = None
+    for attempt in range(1, retries + 1):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "warmth-enrich"})
+            with opener.open(req, timeout=timeout) as resp, open(dest, "wb") as out:
+                while True:
+                    chunk = resp.read(1 << 16)
+                    if not chunk:
+                        break
+                    out.write(chunk)
+            return dest
+        except Exception as exc:  # noqa: BLE001 - report and retry/backoff
+            last = exc
+            wait = 2 ** attempt
+            sys.stderr.write("  attempt %d failed (%s); retrying in %ds\n"
+                             % (attempt, exc, wait))
+            time.sleep(wait)
+    raise RuntimeError("could not download %s: %s" % (url, last))
+
+
+def _extract_sgm(tar_path, dest_dir):
+    """Extract only ``*.sgm`` members from a tarball into ``dest_dir`` (flat)."""
+    extracted = []
+    with tarfile.open(tar_path, "r:*") as tar:
+        for member in tar.getmembers():
+            if not member.isfile() or not member.name.lower().endswith((".sgm", ".sgml")):
+                continue
+            data = tar.extractfile(member)
+            if data is None:
+                continue
+            out_path = os.path.join(dest_dir, os.path.basename(member.name))
+            with open(out_path, "wb") as fh:
+                fh.write(data.read())
+            extracted.append(out_path)
+    return extracted
+
+
+def fetch_sgm(dest_dir, years=None, base_url=DEFAULT_BASE_URL):
+    """Download each edition's test tarball and extract its SGML into ``dest_dir``.
+
+    Returns ``dest_dir``. Tarballs are cached, so re-runs skip re-downloading.
+    Years already present as extracted ``*.sgm`` are left as-is.
+    """
+    os.makedirs(dest_dir, exist_ok=True)
+    if years is None:
+        years = sorted(WMT_TEST_TARBALLS)
+    for year in years:
+        if year not in WMT_TEST_TARBALLS:
+            sys.stderr.write("no known test tarball for WMT%s; skipping\n" % year)
+            continue
+        url = _tarball_url(year, base_url)
+        tar_path = os.path.join(dest_dir, "wmt%d-%s" % (year, WMT_TEST_TARBALLS[year]))
+        if not os.path.isfile(tar_path):
+            print("  fetching %s -> %s" % (url, os.path.basename(tar_path)))
+            _download(url, tar_path)
+        sgms = _extract_sgm(tar_path, dest_dir)
+        print("  WMT%d: extracted %d sgm files" % (year, len(sgms)))
+    return dest_dir
 
 # ---------------------------------------------------------------------------
 # SGML source parsing -> {(year, norm_src_lang): [docid_for_seg1, docid2, ...]}
@@ -290,6 +390,15 @@ def main():
     ap.add_argument("--parquet-dir", default="data")
     ap.add_argument("--sgm-dir", default=None,
                     help="directory with extracted WMT *-src.*.sgm files")
+    ap.add_argument("--fetch", action="store_true",
+                    help="download + extract the WMT test tarballs, then enrich")
+    ap.add_argument("--fetch-dir", default=None,
+                    help="where to cache/extract tarballs (default: <parquet-dir>/_wmt_test_sgm)")
+    ap.add_argument("--base-url", default=DEFAULT_BASE_URL,
+                    help="tarball URL template with {yy}/{year}/{name} "
+                         "(default: %s)" % DEFAULT_BASE_URL)
+    ap.add_argument("--years", nargs="*", type=int, default=None,
+                    help="restrict fetch to these editions, e.g. 2013 2014")
     ap.add_argument("--human-scores", nargs="*", default=[],
                     help="TSV/CSV files with per-segment human scores")
     ap.add_argument("--dry-run", action="store_true",
@@ -302,12 +411,18 @@ def main():
         _self_test()
         return
 
-    if not args.sgm_dir and not args.human_scores:
-        ap.error("nothing to do: pass --sgm-dir and/or --human-scores "
+    sgm_dir = args.sgm_dir
+    if args.fetch:
+        sgm_dir = args.fetch_dir or os.path.join(args.parquet_dir, "_wmt_test_sgm")
+        print("Fetching WMT test SGML into %s ..." % sgm_dir)
+        fetch_sgm(sgm_dir, years=args.years, base_url=args.base_url)
+
+    if not sgm_dir and not args.human_scores:
+        ap.error("nothing to do: pass --fetch, --sgm-dir and/or --human-scores "
                  "(or --self-test)")
 
-    docmap = build_docid_map(args.sgm_dir) if args.sgm_dir else {}
-    if args.sgm_dir:
+    docmap = build_docid_map(sgm_dir) if sgm_dir else {}
+    if sgm_dir:
         print("doc_id map: %d (year,lang) groups, e.g. %s"
               % (len(docmap), sorted(docmap)[:5]))
     human = load_human_scores(args.human_scores) if args.human_scores else {}

@@ -8,9 +8,9 @@ language:
 - es
 - cs
 - ru
-- hi
 - zh
 - ja
+- ko
 task_categories:
 - translation
 tags:
@@ -22,7 +22,7 @@ tags:
 - human-evaluation
 - ntrex
 - flores
-- terminology
+- wmt24pp
 configs:
 - config_name: default
   data_files:
@@ -60,6 +60,18 @@ configs:
   data_files:
   - split: train
     path: data/wmt-metrics/wmt14.parquet
+- config_name: wmt-metrics-hi
+  data_files:
+  - split: train
+    path: data/wmt-metrics-hi/*.parquet
+- config_name: wmt22
+  data_files:
+  - split: train
+    path: data/wmt-metrics-hi/wmt22.parquet
+- config_name: wmt23
+  data_files:
+  - split: train
+    path: data/wmt-metrics-hi/wmt23.parquet
 - config_name: ntrex
   data_files:
   - split: train
@@ -72,38 +84,47 @@ configs:
   data_files:
   - split: train
     path: data/ntrex/ntrex-additional.parquet
+- config_name: wmt24pp
+  data_files:
+  - split: train
+    path: data/wmt24pp/*.parquet
+- config_name: flores-plus
+  data_files:
+  - split: train
+    path: data/flores-plus/*.parquet
 ---
 
 # WARMTH — WMT & multilingual MT evaluation data, consolidated
 
 **WARMTH** gathers heterogeneous machine-translation **evaluation** resources —
-the WMT metrics / general-MT shared tasks, WMT24++ post-edits, NTREX-128,
-FLORES+, Meta's BOUQuET, and the WMT terminology task — into **one
-HuggingFace-loadable dataset** with a single uniform schema. Every row is one
-**segment × system** translation (or, for pure test sets, one **segment**), so
-source, reference and hypothesis sit side by side, tagged with collection,
-release, language pair, segment id, document id, domain and any human
-annotations.
+the WMT metrics / general-MT shared tasks, WMT24++ post-edits, NTREX-128 and
+FLORES — into **one HuggingFace-loadable dataset** with a single uniform schema.
+Every row is one **segment × system** translation (or, for pure test sets, one
+**segment**), so source, reference and hypothesis sit side by side, tagged with
+collection, release, language pair, segment id, document id, domain and any
+human annotations.
 
 ```python
 from datasets import load_dataset
 
-ds  = load_dataset("alvations/warmth")               # everything built
-wmt = load_dataset("alvations/warmth", "wmt-metrics") # one collection
-n19 = load_dataset("alvations/warmth", "ntrex")       # NTREX-128
-w14 = load_dataset("alvations/warmth", "wmt14")       # one WMT edition
+ds   = load_dataset("alvations/warmth")                 # everything (~3.26M rows)
+wmt  = load_dataset("alvations/warmth", "wmt-metrics")  # WMT08-14
+flo  = load_dataset("alvations/warmth", "flores-plus")  # FLORES-200
+pp   = load_dataset("alvations/warmth", "wmt24pp")      # WMT24++ post-edits
+n19  = load_dataset("alvations/warmth", "ntrex")        # NTREX-128
+w23  = load_dataset("alvations/warmth", "wmt23")        # one edition
 ```
 
 ## Schema (one superset for every source)
 
 | field | type | description |
 |-------|------|-------------|
-| `collection` | string | source family: `wmt-metrics`, `wmt24pp`, `ntrex`, `flores-plus`, `bouquet`, `wmt-terminology` |
-| `release` | string | specific release, e.g. `WMT13`, `NTREX-128`, `FLORES+`, `wmt24pp` |
+| `collection` | string | `wmt-metrics`, `wmt24pp`, `ntrex`, `flores-plus` |
+| `release` | string | e.g. `WMT13`, `WMT23`, `NTREX-128`, `FLORES-200`, `wmt24pp` |
 | `year` | int32 \| null | edition year |
-| `testset` | string \| null | e.g. `newstest2013`, `flores-devtest` |
-| `domain` | string \| null | e.g. `news`, `speech`, `social` |
-| `langpair` | string | direction as distributed, e.g. `de-en`, `eng-spa` |
+| `testset` | string \| null | e.g. `newstest2013`, `wmt23`, `flores-devtest` |
+| `domain` | string \| null | e.g. `news`, `speech`, `social`, `literary`, `wikinews` |
+| `langpair` | string | direction as distributed, e.g. `de-en`, `eng-spa`, `en-ja_JP` |
 | `src_lang` / `tgt_lang` | string | normalised language codes |
 | `system` | string \| null | MT system id (`null` for pure test sets) |
 | `segment_id` | int32 | 1-indexed segment within the test set |
@@ -112,79 +133,81 @@ w14 = load_dataset("alvations/warmth", "wmt14")       # one WMT edition
 | `reference` | string \| null | reference translation |
 | `hypothesis` | string \| null | MT output (`null` for pure test sets) |
 | `human_score` | float32 \| null | human judgement |
-| `human_score_level` | string \| null | `system`, `segment`, or `segment:<name>` (e.g. `segment:mqm`) |
-| `annotations` | string \| null | JSON for anything structured (MQM spans, post-edits, term constraints, quality flags) |
+| `human_score_level` | string \| null | `system`, `segment`, or `segment:<name>` (e.g. `segment:mqm`, `segment:da-sqm`) |
+| `annotations` | string \| null | JSON: post-edit flags (`is_bad_source`), FLORES topic/flags, etc. |
 
-## Collections
+## What is materialised here (~3.26M rows)
 
-| key | availability | rows built here | what it is |
-|-----|--------------|----------------:|------------|
-| `wmt-metrics` | **local** | 2,461,040 | WMT08–14 news metric task — source/ref/hyp; WMT14 system-level DA |
-| `ntrex` | **local** | 259,610 | NTREX-128: English source → 128 refs, with document ids |
-| `wmt-metrics-hi` | fetch | — | WMT15–25 via `mt-metrics-eval` — seg-level DA/MQM/ESA, doc ids, domains (GCS) |
-| `wmt24pp` | fetch | — | WMT24++ post-edits + original MT, 55 langs (HF `google/wmt24pp`) |
-| `flores-plus` | fetch | — | FLORES+ dev/devtest, 200+ langs (HF `openlanguagedata/flores_plus`) |
-| `bouquet` | fetch | — | Meta BOUQuET multi-parallel eval set (HF `facebook/bouquet`) |
-| `wmt-terminology` | fetch | — | WMT terminology task: source/ref/hyp + term constraints (task repos) |
+| config | rows | source | ref | hyp | doc_id | human score | notes |
+|--------|-----:|:--:|:--:|:--:|:--:|:--:|-------|
+| `wmt-metrics` (WMT08–14) | 2,461,040 | ✅* | ✅ | ✅ | via `enrich.py` | WMT14 system-DA | news task |
+| `wmt-metrics-hi` (WMT22–23) | 75,530 | ✅ | ✅ | ✅ | ✅ | ✅ seg MQM/DA-SQM | **partial** mt-metrics-eval slices (see below) |
+| `wmt24pp` | 54,890 | ✅ | ✅ post-edit | ✅ orig ref | ✅ | — | all 55 en→xx pairs |
+| `ntrex` (NTREX-128) | 259,610 | ✅ | ✅ | — | ✅ | — | eng → 128 langs |
+| `flores-plus` (FLORES-200) | 407,827 | ✅ | ✅ | — | ✅ (URL) | — | dev + devtest, 203 langs |
 
-**local** collections are materialised in `data/` and load out of the box.
-**fetch** collections need a network download and are built with `build.py`
-(the environment this repo was assembled in could not reach statmt.org /
-huggingface.co / the mt-metrics-eval GCS bucket, so they are shipped as
-ready-to-run adapters rather than pre-built parquet).
+`*` WMT14 has no source side locally (per-direction test sets).
 
-## Building the fetch collections
+Language coverage spans `en↔{cs,de,es,fr,ru,hi,hu,zh,he,…}` (WMT), 128 NTREX
+languages, 200+ FLORES languages, and 55 WMT24++ locale pairs.
+
+## Provenance & how each collection is obtained
+
+The build environment could **not** reach `statmt.org`, `huggingface.co`, or the
+`mt-metrics-eval` GCS bucket (all firewalled), so wherever possible the data was
+fetched from public GitHub copies and re-assembled. Each adapter lives in
+[`adapters/`](adapters) and maps its source onto the schema above.
+
+- **wmt-metrics (WMT08–14)** — the plain metric-task files under
+  [`metric_data/`](metric_data), read by [`warmth_core.py`](warmth_core.py).
+- **wmt-metrics-hi (WMT15–25)** — the `mt-metrics-eval` layout (system outputs,
+  seg-level MQM/DA/ESA, doc ids, domains). **WMT22 and WMT23 are materialised
+  from community/official mirrors** (`NJUNLP/lost_in_the_src`,
+  `wmt-conference/ErrorSpanAnnotation`) and are **partial slices** — the full
+  release lives on the GCS bucket. Point `build.py` at a full
+  `mt-metrics-eval-v2` extract to complete WMT15–25.
+- **wmt24pp** — all 55 `en-xx_XX.jsonl` files (`google/wmt24pp`).
+- **ntrex** — `MicrosoftTranslator/NTREX` (CC BY-SA 4.0), doc ids from `DOCUMENT_IDS.tsv`.
+- **flores-plus** — the official `flores200_dataset/` (dev + devtest) with
+  per-sentence URL / domain / topic metadata.
+
+### Still to fetch (blocked hosts / no GitHub mirror found)
+
+`bouquet` (Meta BOUQuET, HF `facebook/bouquet`) and `wmt-terminology` (WMT
+terminology task) have working adapters but no reachable data in this
+environment — run their `build.py` step where the Hub / task repos are reachable.
+Likewise WMT15–21 / WMT24–25 metrics need a full `mt-metrics-eval-v2` extract.
+
+## (Re)building
 
 ```bash
 python build.py --list                       # registry + availability
-python build.py                              # (re)build all local collections
-python build.py --collections ntrex --fetch  # git-clone NTREX, then build
-
-# WMT15-25 metrics: download mt-metrics-eval-v2.tgz where GCS is reachable, extract, then
+python build.py                              # local collections
+python build.py --collections ntrex --fetch  # git-clone then build
+python build.py --collections flores-plus --fetch
+python build.py --collections wmt24pp  --root /path/to/wmt24pp
 python build.py --collections wmt-metrics-hi --root /path/to/mt-metrics-eval-v2
-
-# HF-hosted sources (run where huggingface.co is reachable)
-python build.py --collections wmt24pp        # google/wmt24pp
-python build.py --collections flores-plus    # openlanguagedata/flores_plus
-python build.py --collections bouquet        # facebook/bouquet
-
-# WMT terminology task (point at the task's JSONL data)
-python build.py --collections wmt-terminology --root /path/to/terminology_data
+python build.py --collections bouquet        # needs huggingface.co
+python enrich.py --fetch --parquet-dir data/wmt-metrics   # WMT08-14 doc ids
 ```
 
-Each adapter lives in [`adapters/`](adapters) and maps its source onto the
-schema above; add a new source by writing one `iter_records()` and registering
-it in `adapters/__init__.py`.
-
-## WMT metrics: doc ids & more human scores
-
-WMT08–14 ship as plain line-aligned text (no document boundaries; only WMT14 has
-system-level DA). [`enrich.py`](enrich.py) fills `doc_id` from the WMT `test.tgz`
-**SGML** and merges per-segment human scores — including a one-command `--fetch`:
-
-```bash
-python enrich.py --fetch --parquet-dir data/wmt-metrics      # download SGML → doc_id
-python enrich.py --human-scores da-seg-scores.tsv --parquet-dir data/wmt-metrics
-python enrich.py --self-test
-```
-
-For WMT15–25 the `wmt-metrics-hi` adapter already brings doc ids, domains and
-segment-level DA/MQM/ESA from `mt-metrics-eval`.
+Add a source by writing one `iter_records()` and registering it in
+`adapters/__init__.py`.
 
 ## Publishing to the Hub
 
 The `data/**` parquet plus this card's `configs:` block already are a loadable
-dataset. To push it (run where `huggingface.co` is reachable and authenticated):
+dataset. To push (run where `huggingface.co` is reachable and authenticated):
 
 ```bash
 python push_to_hub.py --repo-id alvations/warmth              # upload data/ + README
 python push_to_hub.py --repo-id alvations/warmth --via-datasets --dry-run
 ```
 
-## Provenance & license
+## License
 
 Redistributed for MT and MT-evaluation research; each source keeps its own
 terms — WMT/statmt.org shared-task data (cite the relevant *Findings of the WMT*
-papers), NTREX-128 (CC BY-SA 4.0), FLORES+ (CC BY-SA 4.0), WMT24++ (Apache-2.0),
-BOUQuET (Meta), and the WMT terminology task. Please cite the originating papers
-and respect the upstream licenses.
+papers), NTREX-128 (CC BY-SA 4.0), FLORES-200 (CC BY-SA 4.0), WMT24++
+(google/wmt24pp, Apache-2.0). Please cite the originating papers and respect the
+upstream licenses.

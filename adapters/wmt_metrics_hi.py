@@ -67,20 +67,26 @@ def _load_docs(path):
 
 
 def _load_seg_scores(hs_dir, lp, n_src):
-    """Return {name: {system: [score per seg]}} for one langpair."""
+    """Return {name: {system: {segment_id: score}}} for one langpair.
+
+    mt-metrics-eval ``*.seg.score`` files list ``<system>\\t<score>`` with each
+    system's segments in order, one contiguous block per system. We assign the
+    segment id from a per-system running counter, which is robust to systems of
+    differing length or interleaving.
+    """
     out = {}
     for path in glob.glob(os.path.join(hs_dir, "%s.*.seg.score" % lp)):
         name = os.path.basename(path)[len(lp) + 1:-len(".seg.score")]
         by_sys = {}
-        rows = _read(path)
-        # files are "<system>\t<score>" repeated in blocks of n_src segments
-        for idx, line in enumerate(rows):
+        counters = {}
+        for line in _read(path):
             parts = line.split("\t") if "\t" in line else line.split()
             if len(parts) < 2:
                 continue
             sysname, score = parts[0], parts[1]
-            seg = idx % n_src if n_src else idx
-            by_sys.setdefault(sysname, {})[seg + 1] = score
+            c = counters.get(sysname, 0) + 1
+            counters[sysname] = c
+            by_sys.setdefault(sysname, {})[c] = score
         out[name] = by_sys
     return out
 

@@ -12,8 +12,8 @@ one source family, mapping that source onto WARMTH's single superset schema.
 """
 
 from adapters import (
-    wmt_metrics, wmt_metrics_hi, ntrex, wmt24pp, flores_plus, bouquet,
-    wmt_terminology,
+    wmt_metrics, wmt_metrics_hi, wmt_general, ntrex, wmt24pp, flores_plus,
+    bouquet, wmt_terminology, bio_mqm, wmt_biomed,
 )
 
 REGISTRY = {
@@ -21,23 +21,32 @@ REGISTRY = {
         module=wmt_metrics, availability="local",
         note="WMT08-14 news metric task (source/ref/hyp; WMT14 system-level DA) from metric_data/"),
     "wmt-metrics-hi": dict(
-        module=wmt_metrics_hi, availability="fetch",
-        note="WMT15-25 via mt-metrics-eval (seg-level DA/MQM, docids, domains) — GCS"),
+        module=wmt_metrics_hi, availability="local",
+        note="WMT22-23 mt-metrics-eval slices with seg-level MQM/DA-SQM, docids, domains"),
+    "wmt-general": dict(
+        module=wmt_general, availability="local",
+        note="WMT21-25 general/news task submissions (wmt-conference/wmt*-news-systems, wmt25-general-mt)"),
     "ntrex": dict(
         module=ntrex, availability="local",
-        note="NTREX-128: eng source -> 128 refs with doc ids (git clone) "),
-    "wmt24pp": dict(
-        module=wmt24pp, availability="fetch",
-        note="WMT24++ post-edits + original MT for 55 langs — HF google/wmt24pp"),
+        note="NTREX-128: eng source -> 128 refs with doc ids"),
     "flores-plus": dict(
-        module=flores_plus, availability="fetch",
-        note="FLORES+ dev/devtest multi-parallel (200+ langs) — HF openlanguagedata/flores_plus"),
+        module=flores_plus, availability="local",
+        note="FLORES-200 dev+devtest multi-parallel (203 langs) with URL/domain"),
+    "wmt24pp": dict(
+        module=wmt24pp, availability="local",
+        note="WMT24++ post-edits + original MT, all 55 en->xx pairs (google/wmt24pp)"),
+    "bio-mqm": dict(
+        module=bio_mqm, availability="local",
+        note="Bio-MQM: biomedical MT with segment MQM error spans (amazon-science/bio-mqm-dataset)"),
+    "wmt-biomed": dict(
+        module=wmt_biomed, availability="local",
+        note="WMT biomedical parallel test sets, en<->fr (fyvo/WMT-Biomed-Test)"),
+    "wmt-terminology": dict(
+        module=wmt_terminology, availability="local",
+        note="WMT25 terminology task: en-zh docs with term constraints (wmt-conference/wmt25-terminology)"),
     "bouquet": dict(
         module=bouquet, availability="fetch",
-        note="Meta BOUQuET multi-parallel eval set — HF facebook/bouquet"),
-    "wmt-terminology": dict(
-        module=wmt_terminology, availability="fetch",
-        note="WMT terminology task (source/ref/hyp + term constraints) — task repos"),
+        note="Meta BOUQuET multi-parallel eval set — HF facebook/bouquet (not reachable here)"),
 }
 
 

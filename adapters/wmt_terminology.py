@@ -26,6 +26,7 @@ The terminology constraints are preserved verbatim under
 ``annotations = {"terms": ...}``.
 """
 
+import ast
 import glob
 import io
 import json
@@ -36,7 +37,55 @@ import subprocess
 from warmth_schema import record
 
 COLLECTION = "wmt-terminology"
-DEFAULT_REPO_URL = None  # set via --repo-url; no single canonical upstream
+DEFAULT_REPO_URL = "https://github.com/wmt-conference/wmt25-terminology"
+
+
+def _as_dict(v):
+    if isinstance(v, dict):
+        return v
+    if isinstance(v, str):
+        try:
+            d = ast.literal_eval(v)
+            return d if isinstance(d, dict) else {}
+        except (ValueError, SyntaxError):
+            return {}
+    return {}
+
+
+def iter_wmt25_terminology(root):
+    """Ingest the ``wmt-conference/wmt25-terminology`` repo.
+
+    ``ranking/references/track2/full_data_<year>.jsonl`` holds en/zh document
+    pairs with three terminology-constraint dictionaries (``proper`` = the gold
+    term translations, ``random`` = distractors, ``noterm`` = empty). Each
+    document becomes an en->zh row whose ``annotations`` carries the term dicts.
+    """
+    files = sorted(glob.glob(os.path.join(root, "ranking", "references", "track2",
+                                          "full_data_*.jsonl")))
+    for path in files:
+        m = re.search(r"full_data_(\d{4})", path)
+        year = int(m.group(1)) if m else None
+        with io.open(path, "r", encoding="utf-8", errors="replace") as fh:
+            for i, line in enumerate(fh):
+                line = line.strip()
+                if not line:
+                    continue
+                d = json.loads(line)
+                src, ref = d.get("en"), d.get("zh")
+                if src is None or ref is None:
+                    continue
+                terms = _as_dict(d.get("proper"))
+                ann = {"terms": terms, "term_mode": "proper"}
+                if d.get("random") is not None:
+                    ann["random_terms"] = _as_dict(d.get("random"))
+                yield record(
+                    collection=COLLECTION, release="wmt-terminology",
+                    year=year, testset="wmt-terminology-track2",
+                    domain=None, langpair="en-zh", src_lang="en", tgt_lang="zh",
+                    system=None, segment_id=i + 1, doc_id=None,
+                    source=src, reference=ref, hypothesis=None,
+                    human_score=None, human_score_level=None,
+                    annotations=json.dumps(ann, ensure_ascii=False))
 
 _ALIASES = {
     "source": ("source", "src", "source_text", "source_segment"),
@@ -74,6 +123,10 @@ def _langpair_from_name(path):
 
 
 def iter_records(root, year=None):
+    # WMT25 terminology repo has a bespoke en/zh + term-dict layout.
+    if os.path.isdir(os.path.join(root, "ranking", "references", "track2")):
+        yield from iter_wmt25_terminology(root)
+        return
     for path in sorted(glob.glob(os.path.join(root, "**", "*.jsonl"), recursive=True)):
         file_lp = _langpair_from_name(path)
         with io.open(path, "r", encoding="utf-8", errors="replace") as fh:

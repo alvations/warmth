@@ -116,8 +116,9 @@ def _config_block(out_root="data"):
             continue
         lines += ["- config_name: %s" % key, "  data_files:",
                   "  - split: train", "    path: data/%s/*.parquet" % key]
-        # also expose each release as its own config for big collections
-        if len(shards) > 1:
+        # also expose each release as its own config, but only when there are
+        # few, clean shards (avoid dozens of per-langpair sub-configs)
+        if 1 < len(shards) <= 12:
             for sp in shards:
                 name = os.path.splitext(os.path.basename(sp))[0]
                 lines += ["- config_name: %s" % name, "  data_files:",

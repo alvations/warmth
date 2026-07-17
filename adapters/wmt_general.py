@@ -126,6 +126,10 @@ def iter_wmt25(repo_dir):
                 ann = {"level": "document"}
                 if row.get("paragraphs_match") is not None:
                     ann["paragraphs_match"] = str(row.get("paragraphs_match"))
+                # preserve WMT25 multimodal / prompt metadata so nothing is lost
+                for k in ("video", "screenshot", "prompt_instruction"):
+                    if doc.get(k):
+                        ann[k] = doc[k]
                 yield record(
                     collection=COLLECTION, release="WMT25", year=2025,
                     testset="wmttest2025", domain=doc.get("domain"),

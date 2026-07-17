@@ -145,8 +145,8 @@ bio = load_dataset("alvations/warmth", "bio-mqm")      # biomedical MQM spans
 | `year` | int32 \| null | edition year |
 | `testset` | string \| null | e.g. `newstest2013`, `wmttest2025`, `flores-devtest`, `medline18`, `bio-mqm` |
 | `domain` | string \| null | `news`, `speech`, `social`, `literary`, `biomedical`, `wikinews`, … |
-| `langpair` | string | direction as distributed, e.g. `de-en`, `eng-spa`, `en-ja_JP`, `en-zh` |
-| `src_lang` / `tgt_lang` | string | normalised language codes |
+| `langpair` | string | **raw** direction as distributed (preserves the source's exact codes), e.g. `de-en`, `eng-spa`, `eng_Latn-ace_Arab`, `en-ja_JP` |
+| `src_lang` / `tgt_lang` | string | **canonical** base language subtag, consistent across every task (`eng`/`eng_Latn`/`en`→`en`, `ar_EG`→`ar`, `spa`→`es`); the raw code is always recoverable from `langpair` |
 | `system` | string \| null | MT system id (`null` for pure test sets / references) |
 | `segment_id` | int32 | 1-indexed segment (or document, for WMT25) |
 | `doc_id` | string \| null | document id |

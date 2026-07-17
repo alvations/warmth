@@ -15,6 +15,7 @@ MQM spans are preserved verbatim in ``annotations``; ``human_score_level`` is se
 to ``segment:mqm``.
 """
 
+import ast
 import glob
 import json
 import os
@@ -24,6 +25,18 @@ from warmth_schema import record, norm_lang
 
 COLLECTION = "bio-mqm"
 REPO_URL = "https://github.com/amazon-science/bio-mqm-dataset"
+
+
+def _structured(v):
+    """Bio-MQM error fields are Python-repr strings; parse to real structures."""
+    if isinstance(v, (list, dict)):
+        return v
+    if isinstance(v, str):
+        try:
+            return ast.literal_eval(v)
+        except (ValueError, SyntaxError):
+            return v
+    return v
 
 
 def _lp_from_dir(name):
@@ -58,8 +71,12 @@ def iter_records(root=None, version=None):
                 if not isinstance(seg, dict):
                     continue
                 ann = {}
-                for k in ("target_errors", "source_errors", "Annotator_ID", "MT_Engine"):
+                for k in ("target_errors", "source_errors"):
                     if seg.get(k) not in (None, "", "[]"):
+                        ann[k] = _structured(seg[k])
+                for k in ("Annotator_ID", "MT_Engine", "filename",
+                          "source_locale", "target_locale"):
+                    if seg.get(k) not in (None, ""):
                         ann[k] = seg[k]
                 has_mqm = "target_errors" in ann or "source_errors" in ann
                 try:

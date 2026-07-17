@@ -49,8 +49,10 @@ Record = namedtuple("Record", FIELDS)
 def record(**kwargs):
     """Create a :class:`Record`, defaulting any unspecified field to ``None``.
 
-    ``langpair`` is derived from ``src_lang``/``tgt_lang`` when omitted (and
-    vice-versa) so adapters can pass whichever is convenient.
+    ``langpair`` keeps the source's *raw* direction string (so nothing is lost),
+    while ``src_lang`` / ``tgt_lang`` are canonicalised to a single convention
+    across every shared task (:func:`norm_lang`). ``langpair`` is derived from
+    the raw src/tgt when omitted (and vice-versa).
     """
     data = {f: kwargs.get(f) for f in FIELDS}
     if data["langpair"] is None and data["src_lang"] and data["tgt_lang"]:
@@ -59,6 +61,8 @@ def record(**kwargs):
         s, t = data["langpair"].split("-", 1)
         data["src_lang"] = data["src_lang"] or s
         data["tgt_lang"] = data["tgt_lang"] or t
+    data["src_lang"] = norm_lang(data["src_lang"])
+    data["tgt_lang"] = norm_lang(data["tgt_lang"])
     unknown = set(kwargs) - set(FIELDS)
     if unknown:
         raise TypeError("unknown record field(s): %s" % ", ".join(sorted(unknown)))
@@ -88,6 +92,30 @@ ARROW_SCHEMA = pa.schema([
 # Common language-code normalisation across sources (WMT Czech drift, etc.).
 LANG_NORMALISE = {"cz": "cs"}
 
+_LANG_CACHE = {}
+
 
 def norm_lang(code):
-    return LANG_NORMALISE.get(code, code) if code else code
+    """Canonical base language subtag, consistent across all shared tasks.
+
+    Maps the many on-disk conventions — ISO-639-1 (``en``), ISO-639-3 (``eng``),
+    BCP-47 with script (``eng_Latn``), and locale codes (``de_DE``, ``ar_EG``) —
+    to a single base language code (``en``, ``de``, ``ar``, ``ace`` …). The raw
+    direction is preserved untouched in the ``langpair`` field, so this loses
+    nothing. Falls back to the (lowercased, cz->cs) input if it can't be parsed.
+    """
+    if not code:
+        return code
+    if code in _LANG_CACHE:
+        return _LANG_CACHE[code]
+    base = LANG_NORMALISE.get(code, code)
+    out = base
+    try:
+        import langcodes
+        lang = langcodes.Language.get(base.replace("_", "-")).language
+        if lang:
+            out = LANG_NORMALISE.get(lang, lang)
+    except Exception:  # noqa: BLE001 - never fail ingestion on a weird code
+        out = base
+    _LANG_CACHE[code] = out
+    return out

@@ -1,0 +1,7 @@
+# Build + load dependencies for the combined MT shared-task benchmark.
+datasets>=2.18
+pyarrow>=14
+sacrebleu>=2.4        # WMT / MTNT / IWSLT / Multi30k / mTEDx test sets
+# No auth token is needed for any of the public HuggingFace datasets used here.
+# wmt25 / wmt25_humeval additionally need a local clone of
+#   https://github.com/wmt-conference/wmt25-general-mt  (run `git lfs pull` in it)

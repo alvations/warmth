@@ -121,6 +121,8 @@ def _config_block(out_root="data"):
         if 1 < len(shards) <= 12:
             for sp in shards:
                 name = os.path.splitext(os.path.basename(sp))[0]
+                if name == key:
+                    continue  # avoid a per-shard config colliding with the collection config
                 lines += ["- config_name: %s" % name, "  data_files:",
                           "  - split: train", "    path: data/%s/%s.parquet" % (key, name)]
     return "\n".join(lines)

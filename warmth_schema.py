@@ -41,9 +41,30 @@ FIELDS = [
     "human_score_level", # "system" | "segment" | None
     "annotations",       # JSON string for anything structured (MQM spans,
                          #   post-edits, term matches, quality labels) | None
+    "row_hash",          # 16-hex content fingerprint of all fields above, for
+                         #   dedup / provenance (blake2b-64). Set automatically.
 ]
 
+# The fields that make up a row's identity (everything except the hash itself).
+_HASH_FIELDS = [f for f in FIELDS if f != "row_hash"]
+
 Record = namedtuple("Record", FIELDS)
+
+
+def compute_row_hash(values):
+    """Stable 16-hex fingerprint of a row's content (``_HASH_FIELDS`` order).
+
+    ``values`` maps field name -> value. ``None`` and missing are treated as the
+    empty string; everything is stringified and unit-separated so two rows hash
+    equal iff their content is identical.
+    """
+    import hashlib
+    parts = []
+    for f in _HASH_FIELDS:
+        v = values.get(f)
+        parts.append("" if v is None else str(v))
+    blob = "\x1f".join(parts).encode("utf-8")
+    return hashlib.blake2b(blob, digest_size=8).hexdigest()
 
 
 def record(**kwargs):
@@ -66,6 +87,7 @@ def record(**kwargs):
     unknown = set(kwargs) - set(FIELDS)
     if unknown:
         raise TypeError("unknown record field(s): %s" % ", ".join(sorted(unknown)))
+    data["row_hash"] = compute_row_hash(data)
     return Record(**data)
 
 
@@ -87,6 +109,7 @@ ARROW_SCHEMA = pa.schema([
     ("human_score", pa.float32()),
     ("human_score_level", pa.string()),
     ("annotations", pa.string()),
+    ("row_hash", pa.string()),
 ])
 
 # Common language-code normalisation across sources (WMT Czech drift, etc.).

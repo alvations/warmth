@@ -5,3 +5,4 @@ data/_wmt_test_sgm/
 data_scores/
 .cache/
 models/
+scores/*.jsonl

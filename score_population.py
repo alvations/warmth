@@ -47,10 +47,12 @@ Examples::
 
 import argparse
 import glob
+import gzip
 import hashlib
 import io
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -165,20 +167,29 @@ def score_one(name, row):
 # checkpoint store
 # --------------------------------------------------------------------------
 
+def _iter_checkpoint_files(space):
+    """Committed gzip parts (``<space>.NNNN.jsonl.gz``) + the live working file."""
+    for p in sorted(glob.glob(os.path.join(SCORES_DIR, "%s.*.jsonl.gz" % space))):
+        yield p, True
+    working = os.path.join(SCORES_DIR, space + ".jsonl")
+    if os.path.isfile(working):
+        yield working, False
+
+
 def load_done(spaces):
-    """Return {space: {(key, metric)}} already computed, from scores/*.jsonl."""
+    """Return {space: {(key, metric)}} already computed, from committed gz parts
+    and the live working jsonl — so resume works across restarts and clones."""
     done = {sp: set() for sp in spaces}
     for sp in spaces:
-        path = os.path.join(SCORES_DIR, sp + ".jsonl")
-        if not os.path.isfile(path):
-            continue
-        with io.open(path, "r", encoding="utf-8") as fh:
-            for line in fh:
-                try:
-                    d = json.loads(line)
-                    done[sp].add((d["k"], d["m"]))
-                except Exception:  # noqa: BLE001
-                    continue
+        for path, gz in _iter_checkpoint_files(sp):
+            op = gzip.open(path, "rt", encoding="utf-8") if gz else io.open(path, "r", encoding="utf-8")
+            with op as fh:
+                for line in fh:
+                    try:
+                        d = json.loads(line)
+                        done[sp].add((d["k"], d["m"]))
+                    except Exception:  # noqa: BLE001
+                        continue
     return done
 
 
@@ -207,13 +218,35 @@ class Writer:
             fh.close()
         self._fh = {}
 
+    def rotate_to_gz(self):
+        """Flush+close working files, gzip each into the next numbered part, and
+        truncate the working file. Append-only: never re-compresses old parts."""
+        self.close()
+        parts = []
+        for space in ("row", "refqe", "src"):
+            work = os.path.join(SCORES_DIR, space + ".jsonl")
+            if not os.path.isfile(work) or os.path.getsize(work) == 0:
+                continue
+            existing = glob.glob(os.path.join(SCORES_DIR, "%s.*.jsonl.gz" % space))
+            seq = len(existing) + 1
+            gzp = os.path.join(SCORES_DIR, "%s.%04d.jsonl.gz" % (space, seq))
+            with io.open(work, "rb") as fin, gzip.open(gzp, "wb") as fout:
+                shutil.copyfileobj(fin, fout)
+            open(work, "w").close()  # truncate working file
+            parts.append(gzp)
+        return parts
 
-def git_commit_push(n, push):
+
+def git_commit_push(writer, n, push):
+    writer.rotate_to_gz()
+    subprocess.run(["git", "add", os.path.join(SCORES_DIR, "*.jsonl.gz")], check=False)
     subprocess.run(["git", "add", SCORES_DIR], check=False)
     r = subprocess.run(["git", "commit", "-q", "-m",
                         "scores: checkpoint %d scored keys" % n], check=False)
     if r.returncode == 0 and push:
-        subprocess.run(["git", "push", "-q", "origin", "HEAD"], check=False)
+        for _ in range(3):
+            if subprocess.run(["git", "push", "-q", "origin", "HEAD"]).returncode == 0:
+                break
 
 
 def main():
@@ -288,7 +321,7 @@ def main():
                         print("  scored=%d (%s)" % (scored, os.path.basename(path)))
                     if since_commit >= args.commit_every:
                         writer.flush()
-                        git_commit_push(scored, args.push)
+                        git_commit_push(writer, scored, args.push)
                         since_commit = 0
                     if args.limit and scored >= args.limit:
                         raise StopIteration
@@ -297,7 +330,7 @@ def main():
     finally:
         writer.close()
     if since_commit:
-        git_commit_push(scored, args.push)
+        git_commit_push(writer, scored, args.push)
     print("DONE. new scores written this run: %d" % scored)
 
 

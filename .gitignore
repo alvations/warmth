@@ -6,3 +6,4 @@ data_scores/
 .cache/
 models/
 scores/*.jsonl
+scores/*.log

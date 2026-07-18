@@ -78,6 +78,56 @@ def iter_news_systems(txt_dir, year):
 
 
 # --------------------------------------------------------------------------
+# WMT21 news-systems  (flat "<testset>.<lp>.{src,ref.A,hyp.<system>}.<lang>")
+# --------------------------------------------------------------------------
+
+def iter_wmt21(txt_dir, year=2021):
+    """WMT21's flat naming: sources/``<ts>.<lp>.src.<lang>``,
+    references/``<ts>.<lp>.ref.<X>.<lang>``, system-outputs/
+    ``<ts>.<lp>.hyp.<system>.<lang>``. Covers both ``newstest2021`` and
+    ``florestest2021`` test sets."""
+    src_dir = os.path.join(txt_dir, "sources")
+    ref_dir = os.path.join(txt_dir, "references")
+    so_dir = os.path.join(txt_dir, "system-outputs")
+    if not os.path.isdir(so_dir):
+        return
+    release = "WMT%s" % str(year)[-2:]
+
+    def _src_ref(testset, lp):
+        s = os.path.join(src_dir, "%s.%s.src.%s" % (testset, lp, lp.split("-")[0]))
+        src = _read(s) if os.path.isfile(s) else []
+        refs = sorted(glob.glob(os.path.join(ref_dir, "%s.%s.ref.*" % (testset, lp))))
+        ref = _read(refs[0]) if refs else []
+        return src, ref
+
+    cache = {}
+    for fname in sorted(os.listdir(so_dir)):
+        parts = fname.split(".")
+        if len(parts) < 5 or parts[2] != "hyp":
+            continue
+        testset, lp = parts[0], parts[1]
+        system = ".".join(parts[3:-1])
+        if lp.count("-") != 1:
+            continue
+        src_lang, tgt_lang = lp.split("-", 1)
+        if (testset, lp) not in cache:
+            cache[(testset, lp)] = _src_ref(testset, lp)
+        src, ref = cache[(testset, lp)]
+        domain = "news" if testset.startswith("news") else \
+                 ("flores" if testset.startswith("flores") else None)
+        for i, h in enumerate(_read(os.path.join(so_dir, fname))):
+            yield record(
+                collection=COLLECTION, release=release, year=year,
+                testset=testset, domain=domain, langpair=lp,
+                src_lang=src_lang, tgt_lang=tgt_lang, system=system,
+                segment_id=i + 1, doc_id=None,
+                source=src[i] if i < len(src) else None,
+                reference=ref[i] if i < len(ref) else None,
+                hypothesis=h, human_score=None, human_score_level=None,
+                annotations=None)
+
+
+# --------------------------------------------------------------------------
 # WMT25 general-mt  (document-level JSONL)
 # --------------------------------------------------------------------------
 

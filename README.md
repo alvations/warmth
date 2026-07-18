@@ -163,7 +163,7 @@ bio = load_dataset("alvations/warmth", "bio-mqm")      # biomedical MQM spans
 |--------|-----:|:---:|------------------|-------|
 | `wmt-metrics` (WMT08–14) | 2,461,040 | ✅ | WMT14 system-DA | news metric task |
 | `wmt-metrics-hi` (WMT22–23) | 75,530 | ✅ | ✅ segment MQM / DA-SQM | mt-metrics-eval slices |
-| `wmt-general` (WMT24–25) | 372,031 | ✅ | — | official task submissions; WMT25 doc-level |
+| `wmt-general` (WMT21, 24–25) | 634,914 | ✅ | — | official task submissions; WMT25 doc-level |
 | `wmt24pp` | 54,890 | ✅ orig | post-edit reference | all 55 en→xx pairs |
 | `bio-mqm` | 62,173 | ✅ | ✅ segment MQM error spans | biomedical |
 | `wmt-biomed` | 13,691 | — | — | en↔fr biomedical test sets |

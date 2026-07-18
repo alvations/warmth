@@ -147,6 +147,51 @@ def _ref_text(refs):
     return None
 
 
+def iter_wmt25_humeval(path):
+    """WMT25 ESA human evaluation (``wmt25-genmt-humeval.jsonl``, Git-LFS).
+
+    Each line is one evaluated segment: ``doc_id`` (``<lp>_#_<domain>_#_<doc>_#_<seg>``),
+    ``src_text``, ``tgt_text`` (the reference), and ``scores`` = {system: [ {score,
+    annotator, errors, times}, … ]}. One row per (segment, system): ``human_score``
+    is the mean over annotators and every raw judgement (scores + error spans +
+    annotator ids) is kept verbatim in ``annotations`` so nothing is lost.
+    """
+    with io.open(path, "r", encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            d = json.loads(line)
+            doc_id = d.get("doc_id", "")
+            parts = doc_id.split("_#_")
+            lp = parts[0] if parts else ""
+            if "-" not in lp:
+                continue
+            src_lang, tgt_lang = lp.split("-", 1)
+            domain = parts[1] if len(parts) > 2 else None
+            try:
+                seg = int(parts[-1]) + 1
+            except (ValueError, IndexError):
+                seg = 1
+            source = d.get("src_text")
+            reference = _ref_text(d.get("tgt_text"))
+            for system, anns in (d.get("scores") or {}).items():
+                if not isinstance(anns, list):
+                    continue
+                nums = [a["score"] for a in anns
+                        if isinstance(a, dict) and isinstance(a.get("score"), (int, float))]
+                mean = sum(nums) / len(nums) if nums else None
+                yield record(
+                    collection=COLLECTION, release="WMT25-humeval", year=2025,
+                    testset="wmttest2025-humeval", domain=domain, langpair=lp,
+                    src_lang=src_lang, tgt_lang=tgt_lang, system=system,
+                    segment_id=seg, doc_id=doc_id, source=source,
+                    reference=reference, hypothesis=None,
+                    human_score=mean,
+                    human_score_level="segment:esa" if nums else None,
+                    annotations=json.dumps({"human": anns}, ensure_ascii=False))
+
+
 def iter_wmt25(repo_dir):
     data_dir = os.path.join(repo_dir, "data")
     genmt = os.path.join(data_dir, "wmt25-genmt.jsonl")

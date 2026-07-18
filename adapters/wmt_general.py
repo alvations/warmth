@@ -147,15 +147,18 @@ def _ref_text(refs):
     return None
 
 
-def iter_wmt25_humeval(path):
-    """WMT25 ESA human evaluation (``wmt25-genmt-humeval.jsonl``, Git-LFS).
+def iter_genmt_humeval(path, year=2025):
+    """WMT general-task ESA/MQM human evaluation (``wmt{24,25}-genmt-humeval.jsonl``).
 
     Each line is one evaluated segment: ``doc_id`` (``<lp>_#_<domain>_#_<doc>_#_<seg>``),
     ``src_text``, ``tgt_text`` (the reference), and ``scores`` = {system: [ {score,
-    annotator, errors, times}, … ]}. One row per (segment, system): ``human_score``
-    is the mean over annotators and every raw judgement (scores + error spans +
-    annotator ids) is kept verbatim in ``annotations`` so nothing is lost.
+    annotator, errors, times, protocol}, … ]}. One row per (segment, system):
+    ``human_score`` is the mean over annotators and every raw judgement (scores +
+    error spans + annotator ids + protocol) is kept verbatim in ``annotations`` so
+    nothing is lost. (wmt25's file is Git-LFS — fetch via media.githubusercontent.)
     """
+    release = "WMT%s-humeval" % str(year)[-2:]
+    testset = "wmttest%d-humeval" % year
     with io.open(path, "r", encoding="utf-8", errors="replace") as fh:
         for line in fh:
             line = line.strip()
@@ -178,12 +181,13 @@ def iter_wmt25_humeval(path):
             for system, anns in (d.get("scores") or {}).items():
                 if not isinstance(anns, list):
                     continue
-                nums = [a["score"] for a in anns
-                        if isinstance(a, dict) and isinstance(a.get("score"), (int, float))]
+                nums = [a.get("score", a.get("human")) for a in anns
+                        if isinstance(a, dict)
+                        and isinstance(a.get("score", a.get("human")), (int, float))]
                 mean = sum(nums) / len(nums) if nums else None
                 yield record(
-                    collection=COLLECTION, release="WMT25-humeval", year=2025,
-                    testset="wmttest2025-humeval", domain=domain, langpair=lp,
+                    collection=COLLECTION, release=release, year=year,
+                    testset=testset, domain=domain, langpair=lp,
                     src_lang=src_lang, tgt_lang=tgt_lang, system=system,
                     segment_id=seg, doc_id=doc_id, source=source,
                     reference=reference, hypothesis=None,

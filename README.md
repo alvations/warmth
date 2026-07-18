@@ -128,7 +128,7 @@ MQM error spans, post-edits, terminology constraints).
 ```python
 from datasets import load_dataset
 
-ds  = load_dataset("alvations/warmth")                 # everything (~3.71M rows)
+ds  = load_dataset("alvations/warmth")                 # everything (~4.11M rows)
 m   = load_dataset("alvations/warmth", "wmt-metrics")  # WMT08-14
 g   = load_dataset("alvations/warmth", "wmt-general")  # WMT24-25 submissions
 flo = load_dataset("alvations/warmth", "flores-plus")  # FLORES-200
@@ -157,13 +157,13 @@ bio = load_dataset("alvations/warmth", "bio-mqm")      # biomedical MQM spans
 | `human_score_level` | string \| null | `system`, `segment`, `segment:mqm`, `segment:da-sqm`, … |
 | `annotations` | string \| null | JSON: MQM error spans, post-edit flags, terminology constraints, FLORES topic, … |
 
-## Collections (~3.71M rows materialised)
+## Collections (~4.11M rows materialised)
 
 | config | rows | hyp | human annotation | notes |
 |--------|-----:|:---:|------------------|-------|
 | `wmt-metrics` (WMT08–14) | 2,461,040 | ✅ | WMT14 system-DA | news metric task |
 | `wmt-metrics-hi` (WMT22–23) | 75,530 | ✅ | ✅ segment MQM / DA-SQM | mt-metrics-eval slices |
-| `wmt-general` (WMT21, 24–25) | 634,914 | ✅ | — | official task submissions; WMT25 doc-level |
+| `wmt-general` (WMT21, 24–25) | 778,442 | ✅ | ✅ WMT24–25 ESA (143,528 rows) | task submissions + `*-genmt-humeval` ESA scores |
 | `wmt24pp` | 54,890 | ✅ orig | post-edit reference | all 55 en→xx pairs |
 | `bio-mqm` | 62,173 | ✅ | ✅ segment MQM error spans | biomedical |
 | `wmt-biomed` | 13,691 | — | — | en↔fr biomedical test sets |

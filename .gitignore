@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 data/_sources/
 data/_wmt_test_sgm/
+data_scores/
+.cache/
+models/

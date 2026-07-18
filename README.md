@@ -300,6 +300,35 @@ and authenticated):
 python push_to_hub.py --repo-id alvations/warmth
 ```
 
+## Metric scores (`score_population.py` + `merge_scores.py`)
+
+Automatic MT-metric scores are populated per row via **[lightyear](https://github.com/alvations/lightyear)**
+(BLEU, CHRF, TER, COMET, CometKiwi, MetricX-24, MetricX-24-QE, BERTScore,
+SentenceBERTScore, PreCOMET difficulty, Sentinel-src) into three key-spaces so
+neural models never re-score identical text:
+
+| space | key | metrics | applies to |
+|-------|-----|---------|-----------|
+| `row` | `row_hash` | `bleu chrf ter comet metricx bertscore sentbert` (ref-based) · `cometkiwi_hyp metricxqe_hyp` (QE on hyp) | rows with a hypothesis |
+| `refqe` | hash(source‖reference) | `cometkiwi_ref metricxqe_ref` (QE on the reference itself) | any row with source+reference |
+| `src` | hash(source) | `difficulty_src sentinel_src` | any row with a source |
+
+**Reference-only rows** (test sets, no hypothesis) therefore get the QE-on-reference
+and source-only scores; the reference-based / hyp-QE metrics are left **NaN** (null).
+
+The scorer is **resumable and checkpointing**: scores append to `scores/<space>.jsonl`
+(`{"k","m","s"}`, fsync-flushed every `--flush-every`), already-computed `(key, metric)`
+pairs are skipped on restart (metric-granular resume), and every `--commit-every` rows
+the `scores/` dir is git-committed (and pushed with `--push`). SIGINT/SIGTERM flush
+and exit cleanly — interrupt any time and re-run to continue.
+
+```bash
+pip install "git+https://github.com/alvations/lightyear"      # neural metrics also need torch+GPU+HF
+python score_population.py --preset fast                        # BLEU/CHRF/TER, no GPU/network
+python score_population.py --preset all --commit-every 50000 --push
+python merge_scores.py                                          # pivot -> data_scores/<coll>/<shard>.parquet (row_hash-joined columns)
+```
+
 ## License
 
 Redistributed for MT and MT-evaluation research; each source keeps its own terms

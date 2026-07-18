@@ -185,8 +185,10 @@ and maps its source onto the schema above.
 - **wmt-metrics-hi (WMT22–23)** — `mt-metrics-eval` slices with segment MQM/DA-SQM
   (`wmt-conference/ErrorSpanAnnotation`, `NJUNLP/lost_in_the_src`). Partial vs the
   full GCS release.
-- **wmt-general (WMT24–25)** — official `wmt-conference/wmt24-news-systems` (segment
-  level) and `wmt-conference/wmt25-general-mt` (document level).
+- **wmt-general (WMT21, 24–25)** — official `wmt-conference/wmt21-news-systems`
+  and `wmt24-news-systems` (segment level) + `wmt25-general-mt` (document level),
+  plus the WMT24/25 `*-genmt-humeval` ESA human scores (WMT25's is Git-LFS, fetched
+  via the media.githubusercontent endpoint).
 - **wmt24pp** — all 55 `en-xx_XX.jsonl` (`google/wmt24pp`).
 - **bio-mqm** — `amazon-science/bio-mqm-dataset` (biomedical MQM error spans).
 - **wmt-biomed** — `fyvo/WMT-Biomed-Test` (en↔fr biomedical parallel test sets).
@@ -196,9 +198,9 @@ and maps its source onto the schema above.
 
 ### Known gaps
 
-- **WMT15–21 general/metrics** — need a full `mt-metrics-eval-v2` extract (GCS) or
-  the `wmt21-news-systems` repo (idiosyncratic `florestest2021` layout, not yet
-  parsed).
+- **WMT15–20 general/metrics** — only on statmt.org / the mt-metrics-eval GCS
+  bucket, both 403 here; no GitHub mirror exists (the wmt-conference org's
+  news-systems repos start at WMT21). WMT21–25 are ingested.
 - **bouquet** — Meta BOUQuET is HF-only (`facebook/bouquet`); adapter ready, data
   not reachable here.
 - WMT22/23 in `wmt-metrics-hi` are the human-scored slices, so they are kept out

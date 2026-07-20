@@ -168,6 +168,8 @@ configs:
 
 # WARMTH — WMT & multilingual MT evaluation data, consolidated
 
+> **Continuing this project?** Read **[`HANDOFF.md`](HANDOFF.md)** — it tells any agent exactly how to resume and finish the metric-score population (neural metrics need a GPU box that can reach huggingface.co). ~258k string scores are already checkpointed under `scores/`.
+
 **WARMTH** gathers heterogeneous machine-translation **evaluation** resources —
 the WMT metrics, general/news, terminology and biomedical shared tasks, plus
 WMT24++, NTREX-128 and FLORES — into **one HuggingFace-loadable dataset** with a
